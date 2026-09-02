@@ -17,14 +17,35 @@
 // shu yerni yangilang.
 const API_BASE = 'https://satisfy-endurance-mooned.ngrok-free.dev';
 
+// ------------------------------------------------------------
+// AUTH TOKEN — localStorage'da 'chaqir-token' kaliti bilan saqlanadi
+// (xuddi 'chaqir-theme' kabi). Sahifa yangilansa (F5) ham foydalanuvchi
+// kirgan holatda qolishi uchun app.js boot() ichida shu funksiyalar
+// orqali o'qib/tozalab turadi.
+// ------------------------------------------------------------
+function getStoredToken() {
+  try { return localStorage.getItem('chaqir-token'); } catch (e) { return null; }
+}
+function setStoredToken(token) {
+  try {
+    if (token) localStorage.setItem('chaqir-token', token);
+    else localStorage.removeItem('chaqir-token');
+  } catch (e) { /* localStorage yo'q bo'lsa ham UI ishlayveradi, faqat reload'da eslab qolmaydi */ }
+}
+function clearStoredToken() {
+  setStoredToken(null);
+}
+
 async function apiRequest(path, options = {}) {
+  const token = getStoredToken();
   const res = await fetch(`${API_BASE}${path}`, {
     headers: {
       'Content-Type': 'application/json',
       // Ngrok bepul tarifidagi bir martalik ogohlantirish sahifasini
       // (HTML interstitial) chetlab o'tish uchun — bo'lmasa fetch() JSON
       // o'rniga shu ogohlantirish HTML'ini qaytarib oladi.
-      'ngrok-skip-browser-warning': 'true'
+      'ngrok-skip-browser-warning': 'true',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     },
     ...options
   });
@@ -34,6 +55,11 @@ async function apiRequest(path, options = {}) {
       const body = await res.json();
       if (body && body.error) errMsg = body.error;
     } catch (e) { /* body JSON emas — status matni yetarli */ }
+    // Token eskirgan/yaroqsiz bo'lsa — mahalliy nusxasini tozalaymiz,
+    // shunda keyingi so'rovlar Authorization headerisiz ketadi va
+    // frontend (restoreSession) buni onboarding'ga qaytarish signali
+    // sifatida ishlatadi.
+    if (res.status === 401) clearStoredToken();
     const err = new Error(errMsg);
     err.status = res.status;
     throw err;
@@ -81,9 +107,23 @@ const ChaqirAPI = {
     return apiRequest('/api/employers', { method: 'POST', body: JSON.stringify(data) });
   },
 
-  // ---- Login (telefon bo'yicha qidirish) ----
+  // ---- Login (telefon bo'yicha qidirish — eski/demo yo'l) ----
   findUserByPhone(phone) {
     return apiRequest(`/api/users/by-phone/${encodeURIComponent(phone)}`);
+  },
+
+  // ---- Auth ----
+  loginTelegram(initData) {
+    return apiRequest('/api/auth/telegram', { method: 'POST', body: JSON.stringify({ initData }) });
+  },
+  loginPassword(phone, password) {
+    return apiRequest('/api/auth/login', { method: 'POST', body: JSON.stringify({ phone, password }) });
+  },
+  getMe() {
+    return apiRequest('/api/auth/me');
+  },
+  logout() {
+    return apiRequest('/api/auth/logout', { method: 'POST' });
   },
 
   // ---- Favorites ----
@@ -111,6 +151,12 @@ const ChaqirAPI = {
   // ---- Conversations / messages ----
   getConversations(userId) {
     return apiRequest(`/api/conversations?user_id=${userId}`);
+  },
+  createConversation(userAId, userBId) {
+    return apiRequest('/api/conversations', {
+      method: 'POST',
+      body: JSON.stringify({ user_a_id: userAId, user_b_id: userBId })
+    });
   },
   sendMessage(conversationId, senderId, text) {
     return apiRequest(`/api/conversations/${conversationId}/messages`, {
