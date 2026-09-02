@@ -267,7 +267,7 @@
         </div>
       </section>
 
-      <!-- Manual phone entry -->
+      <!-- Manual phone entry + ixtiyoriy parol (brauzer-demo uchun) -->
       <section class="screen" data-screen="manual-phone">
         <div class="topbar">
           <button class="icon-btn" onclick="goBack()" aria-label="Orqaga qaytish">
@@ -278,12 +278,17 @@
         <div class="screen-content gap-24 pt-24">
           <div class="gap-8">
             <div class="h1">Raqamni kiriting</div>
-            <div class="body">Qo'lda telefon raqamingizni yozing</div>
+            <div class="body">Telefon raqamingiz va (ixtiyoriy) parol — keyin brauzerdan ham kira olasiz</div>
           </div>
           <div class="field field--float" id="field-manual-phone">
             <input class="input" type="tel" placeholder=" " id="manual-phone-field" inputmode="tel" autocomplete="tel" oninput="checkManualPhone()">
             <label class="field-label" for="manual-phone-field">Telefon raqam</label>
             <div class="field-error" id="manual-phone-error">To'liq telefon raqamini kiriting</div>
+          </div>
+          <div class="field field--float" id="field-reg-password">
+            <input class="input" type="password" placeholder=" " id="reg-password-field" autocomplete="new-password" oninput="checkManualPhone()">
+            <label class="field-label" for="reg-password-field">Parol (ixtiyoriy)</label>
+            <div class="field-error" id="reg-password-error">Kamida 4 belgi</div>
           </div>
         </div>
         <div class="screen-fixed-bottom">
@@ -343,13 +348,19 @@
         <div class="screen-content gap-24 pt-24">
           <div class="gap-8">
             <div class="h1">Raqam bilan kirish</div>
-            <div class="body">Ro'yxatdan o'tgan telefon raqamingizni kiriting</div>
+            <div class="body">Ro'yxatdan o'tgan telefon va parolingizni kiriting</div>
           </div>
           <div class="field field--float" id="field-login-phone">
             <input class="input" type="tel" placeholder=" " id="login-phone-field" inputmode="tel" autocomplete="tel" oninput="checkLoginPhone()">
             <label class="field-label" for="login-phone-field">Telefon raqam</label>
             <div class="field-error" id="login-phone-error">To'liq telefon raqamini kiriting</div>
           </div>
+          <div class="field field--float" id="field-login-password">
+            <input class="input" type="password" placeholder=" " id="login-password-field" autocomplete="current-password" oninput="checkLoginPhone()">
+            <label class="field-label" for="login-password-field">Parol</label>
+            <div class="field-error" id="login-password-error">Parolni kiriting (kamida 4 belgi)</div>
+          </div>
+          <div class="body" style="opacity:0.7;font-size:13px;">Demo ishchilar: parol <strong>demo1234</strong></div>
         </div>
         <div class="screen-fixed-bottom">
           <button class="btn btn-primary is-disabled" id="login-phone-next-btn" onclick="loginManualSubmit()">Kirish</button>

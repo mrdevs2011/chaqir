@@ -152,16 +152,23 @@ const ChaqirAPI = {
   getConversations(userId) {
     return apiRequest(`/api/conversations?user_id=${userId}`);
   },
-  createConversation(userAId, userBId) {
+  // Backend user_a_id ni token egasidan oladi — faqat user_b_id yuboriladi.
+  createConversation(userBId) {
     return apiRequest('/api/conversations', {
       method: 'POST',
-      body: JSON.stringify({ user_a_id: userAId, user_b_id: userBId })
+      body: JSON.stringify({ user_b_id: userBId })
     });
   },
-  sendMessage(conversationId, senderId, text) {
+  // sender_id backendda token egasidan olinadi — faqat text yuboriladi.
+  sendMessage(conversationId, text) {
     return apiRequest(`/api/conversations/${conversationId}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ sender_id: senderId, text })
+      body: JSON.stringify({ text })
     });
+  },
+
+  // Suhbatni o'qilgan deb belgilash (unread hisoblagich uchun)
+  markConversationRead(conversationId) {
+    return apiRequest(`/api/conversations/${conversationId}/read`, { method: 'POST' });
   }
 };

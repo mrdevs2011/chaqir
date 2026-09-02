@@ -1151,8 +1151,14 @@ function sharePhone() {
 
 function checkManualPhone() {
   const val = document.getElementById('manual-phone-field').value.trim();
-  document.getElementById('manual-phone-next-btn').classList.toggle('is-disabled', val.length < 9);
+  const pwdEl = document.getElementById('reg-password-field');
+  const pwd = pwdEl ? pwdEl.value : '';
+  // Telefon majburiy; parol bo'sh yoki ≥4 belgi bo'lishi mumkin
+  const phoneOk = val.length >= 9;
+  const pwdOk = !pwd || pwd.length >= 4;
+  document.getElementById('manual-phone-next-btn').classList.toggle('is-disabled', !(phoneOk && pwdOk));
   clearFieldError('field-manual-phone');
+  clearFieldError('field-reg-password');
 }
 
 function submitManualPhone() {
@@ -1161,16 +1167,20 @@ function submitManualPhone() {
     setFieldError('field-manual-phone');
     return;
   }
+  const pwdEl = document.getElementById('reg-password-field');
+  const pwd = pwdEl ? pwdEl.value : '';
+  if (pwd && pwd.length < 4) {
+    setFieldError('field-reg-password');
+    return;
+  }
   appState.phone = val;
+  appState.password = pwd || null;
   finishRegistration();
 }
 
 // MANTIQ: ro'yxatdan o'tish endi backend'ga yoziladi (POST /api/workers
 // yoki /api/employers) — muvaffaqiyatli javobdan olingan `id` appState.id
-// ga saqlanadi, shu id keyinchalik favorites/orders/messages so'rovlarida
-// "kim so'ramoqda" sifatida ishlatiladi. Xatolik bo'lsa (masalan telefon
-// raqam band) — foydalanuvchi 'success' ekraniga o'tmaydi, xato toast
-// ko'rsatiladi va joriy ekranda qoladi.
+// ga saqlanadi. Ixtiyoriy password brauzer-demo login uchun yuboriladi.
 async function finishRegistration() {
   try {
     const payload = {
@@ -1181,6 +1191,12 @@ async function finishRegistration() {
       mahalla: appState.mahalla,
       address: appState.address
     };
+    if (appState.password) payload.password = appState.password;
+    // Telegram Mini App bo'lsa telegram_id ni ham yozamiz
+    const tg = getTg();
+    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+      payload.telegram_id = tg.initDataUnsafe.user.id;
+    }
     let created;
     if (appState.role === 'worker') {
       created = await ChaqirAPI.registerWorker({ ...payload, skills: appState.skills });
@@ -1189,6 +1205,7 @@ async function finishRegistration() {
     }
     appState.id = created.id;
     appState.token = created.token || null;
+    appState.password = null; // xotiradan o'chiramiz
     setStoredToken(appState.token);
   } catch (e) {
     console.error('Ro\'yxatdan o\'tishda xatolik:', e);
@@ -1248,72 +1265,129 @@ function fireConfetti() {
 }
 
 // ------------------------------------------------------------
-// 9. LOGIN — telefon raqam bo'yicha backend'dan qidiriladi
-// (GET /api/users/by-phone/:phone). Topilsa — appState to'liq shu
-// foydalanuvchi bilan to'ladi (id, role, name, hudud...). Topilmasa
-// — avvalgi demo xatti-harakati saqlanadi: mehmon sifatida (id'siz)
-// worker default bilan davom etiladi.
+// 9. LOGIN — haqiqiy auth (Telegram initData yoki demo telefon)
+// Asosiy yo'l: Telegram Mini App ichida POST /api/auth/telegram
+// (HMAC tekshiruvli). Brauzer-demo: avval telefon bo'yicha
+// foydalanuvchini topamiz (eski endpoint), keyin agar parol
+// bo'lmasa ham session yo'q — lekin demo uchun by-phone bilan
+// davom etiladi. Token faqat register yoki auth/* orqali keladi.
 // ------------------------------------------------------------
-async function tryLoginByPhone(phone) {
-  try {
-    const user = await ChaqirAPI.findUserByPhone(phone);
-    appState.id = user.id;
-    appState.role = user.role;
-    appState.name = user.name;
-    appState.phone = user.phone;
-    appState.region = user.region;
-    appState.district = user.district;
-    appState.mahalla = user.mahalla;
-    appState.address = user.address;
-    return true;
-  } catch (e) {
-    return false;
+function applyAuthUser(user, token) {
+  if (token) {
+    appState.token = token;
+    setStoredToken(token);
   }
+  appState.id = user.id;
+  appState.role = user.role;
+  appState.name = user.name;
+  appState.phone = user.phone;
+  appState.region = user.region;
+  appState.district = user.district;
+  appState.mahalla = user.mahalla;
+  appState.address = user.address;
+}
+
+async function tryLoginByTelegram() {
+  const tg = getTg();
+  if (!tg || !tg.initData || !isTelegramMiniApp()) return false;
+  try {
+    const res = await ChaqirAPI.loginTelegram(tg.initData);
+    if (res && res.user) {
+      applyAuthUser(res.user, res.token);
+      return true;
+    }
+  } catch (e) {
+    // 404 = hali ro'yxatdan o'tmagan — frontend registratsiyaga yo'naltiradi
+    console.warn('Telegram auth:', e.message || e);
+  }
+  return false;
+}
+
+async function tryLoginByPassword(phone, password) {
+  try {
+    const res = await ChaqirAPI.loginPassword(phone, password);
+    if (res && res.user) {
+      applyAuthUser(res.user, res.token);
+      return true;
+    }
+  } catch (e) {
+    console.warn('Password login:', e.message || e);
+    throw e;
+  }
+  return false;
 }
 
 async function loginShare() {
   applyTelegramUserDefaults();
   if (!appState.phone) appState.phone = '+998901112233';
+
+  // Avval Telegram initData orqali haqiqiy auth
+  if (await tryLoginByTelegram()) {
+    await goHome();
+    return;
+  }
+
   const tg = getTg();
   if (tg && typeof tg.requestContact === 'function' && isTelegramMiniApp()) {
     try {
       tg.requestContact(async (ok) => {
         if (ok) applyTelegramUserDefaults();
-        await finishLogin();
+        // Telegram contact ulashganda ham token kerak — password yo'q,
+        // shuning uchun faqat telegram auth ishlasa home'ga o'tamiz.
+        if (await tryLoginByTelegram()) {
+          await goHome();
+          return;
+        }
+        showToast('Avval ro\'yxatdan o\'ting yoki parol bilan kiring', 'info');
+        go('login-manual-phone');
       });
       return;
     } catch (e) {}
   }
-  await finishLogin();
+  // Brauzerda "Raqamni ulashish" — parol formaga yo'naltiramiz
+  go('login-manual-phone');
 }
 
-async function finishLogin() {
-  const found = await tryLoginByPhone(appState.phone);
-  if (!found) {
-    if (!appState.name) appState.name = 'Foydalanuvchi';
-    if (!appState.role) appState.role = 'worker';
-  }
-  goHome();
-}
-
-// MANTIQ: "Qo'lda kiritish" orqali kirish — ilgari bu tugma
-// to'g'ridan-to'g'ri goHome() ni chaqirardi, va inputdagi raqamni
-// hech qayerga yozmasdi. Endi loginShare() bilan bir xil default
-// to'ldirish mantig'i qo'llaniladi, lekin telefon inputdan olinadi.
+// MANTIQ: "Qo'lda kiritish" — telefon + parol bilan POST /api/auth/login
 function checkLoginPhone() {
-  const val = document.getElementById('login-phone-field').value.trim();
-  document.getElementById('login-phone-next-btn').classList.toggle('is-disabled', val.length < 9);
+  const phone = document.getElementById('login-phone-field').value.trim();
+  const pwdEl = document.getElementById('login-password-field');
+  const pwd = pwdEl ? pwdEl.value : '';
+  const ok = phone.length >= 9 && pwd.length >= 4;
+  document.getElementById('login-phone-next-btn').classList.toggle('is-disabled', !ok);
   clearFieldError('field-login-phone');
+  clearFieldError('field-login-password');
 }
 
 async function loginManualSubmit() {
-  const val = document.getElementById('login-phone-field').value.trim();
-  if (val.length < 9) {
+  const phone = document.getElementById('login-phone-field').value.trim();
+  const pwdEl = document.getElementById('login-password-field');
+  const password = pwdEl ? pwdEl.value : '';
+  if (phone.length < 9) {
     setFieldError('field-login-phone');
     return;
   }
-  appState.phone = val;
-  await finishLogin();
+  if (password.length < 4) {
+    setFieldError('field-login-password');
+    return;
+  }
+  appState.phone = phone;
+  const btn = document.getElementById('login-phone-next-btn');
+  if (btn) btn.classList.add('is-disabled');
+  try {
+    const ok = await tryLoginByPassword(phone, password);
+    if (ok) {
+      await goHome();
+      return;
+    }
+    showToast('Kirish muvaffaqiyatsiz', 'error');
+  } catch (e) {
+    showToast(e.message || 'Telefon yoki parol noto\'g\'ri', 'error');
+    haptic.error();
+  } finally {
+    if (btn) btn.classList.remove('is-disabled');
+    checkLoginPhone();
+  }
 }
 
 // ------------------------------------------------------------
@@ -1480,20 +1554,44 @@ async function renderWorkerOrders() {
       const card = document.createElement('div');
       card.className = 'worker-card';
       card.style.setProperty('--stagger-index', index);
+      const isNew = order.status === 'yangi';
+      const actions = isNew ? `
+        <div class="worker-card-actions" style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn btn-primary btn-sm" data-order-action="done" data-order-id="${order.id}">Bajarildi</button>
+          <button class="btn btn-secondary btn-sm" data-order-action="cancel" data-order-id="${order.id}">Bekor qilish</button>
+        </div>` : '';
       card.innerHTML = `
         <div class="worker-card-top worker-card-top--spread">
-            <div class="worker-card-mahalla">${escapeHtml(order.skill)} · ${escapeHtml(order.mahalla)}</div>
-          </div>
+          <div class="worker-card-mahalla">${escapeHtml(order.skill || '')} · ${escapeHtml(order.mahalla || '')}</div>
           ${renderOrderStatusBadge(order.status)}
         </div>
-        <div class="worker-card-mahalla">${escapeHtml(order.date)}</div>
+        <div class="worker-card-mahalla">${escapeHtml(order.clientName || order.client_name || '')}${order.date ? ' · ' + escapeHtml(order.date) : ''}</div>
+        ${actions}
       `;
+      card.querySelectorAll('[data-order-action]').forEach(btn => {
+        btn.onclick = async (e) => {
+          e.stopPropagation();
+          const action = btn.getAttribute('data-order-action');
+          const status = action === 'done' ? 'bajarilgan' : 'bekor';
+          try {
+            await ChaqirAPI.updateOrderStatus(order.id, status);
+            showToast(status === 'bajarilgan' ? 'Buyurtma bajarildi deb belgilandi' : 'Buyurtma bekor qilindi', 'success');
+            haptic.success();
+            await renderWorkerOrders();
+          } catch (err) {
+            showToast(err.message || 'Status yangilanmadi', 'error');
+          }
+        };
+      });
       list.appendChild(card);
     });
   }
 }
 
 function renderOrderStatusBadge(status) {
+  if (status === 'bekor') {
+    return `<span class="order-status-badge">Bekor</span>`;
+  }
   const isNew = status === 'yangi';
   const label = isNew ? 'Yangi' : 'Bajarilgan';
   return `<span class="order-status-badge${isNew ? ' is-new' : ' is-done'}">${label}</span>`;
@@ -2146,21 +2244,149 @@ function callWorker(worker) {
 // qaytaradi, yangisi yaratilmaydi). Muvaffaqiyatli bo'lsa to'g'ridan-to'g'ri
 // chat oynasi ochiladi.
 async function messageWorker(worker) {
-  if (!appState.id) {
+  if (!appState.id || !appState.token) {
     showToast('Xabar yozish uchun ro\'yxatdan o\'ting', 'info');
     return;
   }
   try {
+    // Backend token egasini user_a qilib oladi — faqat worker id yuboriladi.
     const { id } = await ChaqirAPI.createConversation(worker.id);
     await refreshConversations(); // MOCK_CONVERSATIONS'ni yangilaydi
     const conv = MOCK_CONVERSATIONS.find(c => c.id === id);
     if (conv) {
       currentChatConversation = conv;
       go('chat-detail');
+    } else {
+      // Yangi suhbat hali refresh ro'yxatida bo'lmasa ham ochishga urinish
+      currentChatConversation = {
+        id,
+        contactName: worker.name,
+        contactId: worker.id,
+        avatarColor: worker.avatarColor || worker.avatar_color || '#3B82F6',
+        unreadCount: 0,
+        messages: []
+      };
+      go('chat-detail');
     }
   } catch (e) {
     console.error('Suhbat ochishda xatolik:', e);
     showToast('Suhbat ochilmadi, qayta urinib ko\'ring', 'error');
+  }
+}
+
+// ------------------------------------------------------------
+// 3.3 — Employer → worker so'rov (buyurtma) yuborish bottom-sheet
+// MANTIQ: worker-detail dagi "So'rov yuborish" tugmasi ochadi.
+// Ko'nikma (worker.skills dan), mahalla (appState.mahalla default)
+// tanlanadi va POST /api/orders ga yuboriladi. client_name backend
+// token egasidan olinadi — frontend soxta ism yubormaydi.
+// ------------------------------------------------------------
+let pendingOrderWorker = null;
+let pendingOrderSkill = null;
+
+function openOrderSheet(worker) {
+  if (!appState.id || appState.role !== 'employer') {
+    showToast('So\'rov yuborish uchun ish qidiruvchi sifatida kiring', 'info');
+    return;
+  }
+  pendingOrderWorker = worker;
+  pendingOrderSkill = null;
+
+  document.getElementById('order-sheet-worker-name').textContent =
+    worker.name ? `${worker.name} ga so'rov` : 'So\'rov yuborish';
+
+  const skillsEl = document.getElementById('order-sheet-skills');
+  skillsEl.innerHTML = '';
+  const skills = (worker.skills && worker.skills.length) ? worker.skills : [];
+
+  if (skills.length === 0) {
+    skillsEl.innerHTML = '<div class="body" style="margin-bottom:8px;">Ko\'nikma ko\'rsatilmagan</div>';
+  } else if (skills.length === 1) {
+    pendingOrderSkill = skills[0];
+    skillsEl.innerHTML = `<div class="body" style="margin-bottom:8px;">Ko'nikma: <strong>${escapeHtml(skills[0])}</strong></div>`;
+  } else {
+    const label = document.createElement('div');
+    label.className = 'body';
+    label.style.marginBottom = '8px';
+    label.textContent = 'Ko\'nikmani tanlang:';
+    skillsEl.appendChild(label);
+
+    const chipGroup = document.createElement('div');
+    chipGroup.className = 'chip-group';
+    chipGroup.style.marginBottom = '12px';
+    skills.forEach((skill, idx) => {
+      const chip = document.createElement('div');
+      chip.className = 'chip' + (idx === 0 ? ' selected' : '');
+      chip.textContent = skill;
+      chip.setAttribute('role', 'radio');
+      chip.setAttribute('aria-checked', idx === 0 ? 'true' : 'false');
+      chip.tabIndex = 0;
+      if (idx === 0) pendingOrderSkill = skill;
+      chip.onclick = () => {
+        chipGroup.querySelectorAll('.chip').forEach(c => {
+          c.classList.remove('selected');
+          c.setAttribute('aria-checked', 'false');
+        });
+        chip.classList.add('selected');
+        chip.setAttribute('aria-checked', 'true');
+        pendingOrderSkill = skill;
+        haptic.selection();
+      };
+      chip.onkeydown = (e) => handleCardKeydown(e);
+      chipGroup.appendChild(chip);
+    });
+    skillsEl.appendChild(chipGroup);
+  }
+
+  const mahallaField = document.getElementById('order-mahalla-field');
+  mahallaField.value = appState.mahalla || '';
+  clearFieldError('field-order-mahalla');
+
+  const sheet = document.getElementById('order-sheet');
+  sheet.classList.add('open');
+  document.getElementById('order-sheet-backdrop').classList.add('open');
+}
+
+function closeOrderSheet() {
+  document.getElementById('order-sheet').classList.remove('open');
+  document.getElementById('order-sheet-backdrop').classList.remove('open');
+  pendingOrderWorker = null;
+  pendingOrderSkill = null;
+}
+
+async function submitOrderRequest() {
+  if (!pendingOrderWorker) return;
+
+  const mahalla = document.getElementById('order-mahalla-field').value.trim();
+  if (!mahalla) {
+    setFieldError('field-order-mahalla');
+    showToast('Mahallani kiriting', 'error');
+    return;
+  }
+  if (!pendingOrderSkill) {
+    showToast('Ko\'nikmani tanlang', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('order-submit-btn');
+  if (btn) btn.classList.add('is-disabled');
+
+  try {
+    await ChaqirAPI.createOrder({
+      worker_id: pendingOrderWorker.id,
+      skill: pendingOrderSkill,
+      mahalla
+    });
+    showToast('So\'rovingiz yuborildi!', 'success');
+    haptic.success();
+    closeOrderSheet();
+    goBack();
+  } catch (e) {
+    console.error('So\'rov yuborishda xatolik:', e);
+    showToast(e.message || 'So\'rov yuborilmadi, qayta urinib ko\'ring', 'error');
+    haptic.error();
+  } finally {
+    if (btn) btn.classList.remove('is-disabled');
   }
 }
 
@@ -2229,8 +2455,12 @@ function openChat(conversationId) {
   const conv = MOCK_CONVERSATIONS.find(c => c.id === conversationId);
   if (!conv) return;
   currentChatConversation = conv;
-  conv.unreadCount = 0; // ochilgan suhbat "o'qilgan" deb belgilanadi
+  conv.unreadCount = 0; // UI darhol yangilanadi
   go('chat-detail');
+  // Backendga ham o'qilgan deb yozamiz (keyingi refresh'da badge yo'qoladi)
+  if (appState.token) {
+    ChaqirAPI.markConversationRead(conversationId).catch(() => {});
+  }
 }
 
 function renderChat() {
