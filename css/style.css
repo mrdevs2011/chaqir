@@ -349,7 +349,8 @@ html, body {
   display: flex;
   flex-direction: column;
   padding: 16px 20px calc(24px + env(safe-area-inset-bottom, 0));
-  background: linear-gradient(180deg, rgba(250,250,250,0) 0%, var(--color-bg) 30%);
+  background: var(--color-bg);
+  box-shadow: none;
   flex-shrink: 0;
 }
 
@@ -365,6 +366,8 @@ html, body {
   align-items: stretch;
   border-top: 1px solid var(--color-border);
   background: var(--color-surface);
+  box-shadow: none !important;
+  filter: none !important;
   flex-shrink: 0;
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
@@ -575,10 +578,11 @@ html, body {
 ============================================================ */
 .logo-badge {
   width: 92px; height: 92px;
-  border-radius: 26px;
-  background: var(--color-primary-100);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
+  overflow: visible;
 }
 .logo-badge svg { width: 44px; height: 44px; }
 .logo-badge img {
@@ -589,10 +593,10 @@ html, body {
 }
 /* Rasmiy brand logo (bg olib tashlangan PNG — circle kesilmagan) */
 .logo-badge--brand {
-  background: #0B1220;
-  padding: 12px;
-  border-radius: 28px;
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-primary) 22%, transparent);
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 .logo-badge--brand img {
   width: 100%;
@@ -602,8 +606,9 @@ html, body {
 /* Hero variant — onboarding */
 .logo-badge--hero {
   width: 120px; height: 120px;
-  border-radius: 28px;
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-primary) 22%, transparent);
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
 }
 .logo-badge--hero svg { width: 64px; height: 64px; }
 .logo-badge--hero.logo-badge--brand {
@@ -613,7 +618,7 @@ html, body {
 /* Kichikroq variant — telefon-ulashish ekranida logo o'rniga
    ishlatiladi, asosiy badge bilan bir xil vizual til, kichikroq
    o'lcham. */
-.logo-badge.is-sm { width: 76px; height: 76px; border-radius: var(--radius-md); }
+.logo-badge.is-sm { width: 76px; height: 76px; border-radius: 0; background: transparent; box-shadow: none; }
 
 /* 2.1 + 7 — Logo entrance + brand story (faqat onboarding) */
 .screen[data-screen="onboarding"] .logo-badge {
@@ -839,10 +844,12 @@ html, body {
 }
 
 .role-emoji {
+  box-shadow: none;
+  /* circle shadow/fon olib tashlangan — pastda override */
   width: 48px; height: 48px;
   flex-shrink: 0;
-  border-radius: var(--radius-sm);
-  background: var(--color-primary-100);
+  border-radius: 0;
+  background: transparent;
   color: var(--color-primary-dark);
   display: flex; align-items: center; justify-content: center;
   transition: background 0.2s ease, color 0.2s ease;
@@ -859,6 +866,61 @@ html, body {
    2.3 — floating label, error+shake, char counter
 ============================================================ */
 .field { display: flex; flex-direction: column; gap: 8px; }
+
+/* Telefon: fixed +998 prefiks + raqam maydoni */
+.phone-input {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 52px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.phone-input:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--color-primary-100);
+}
+.phone-prefix {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0 14px;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-border) 45%, var(--color-surface));
+  border-right: 1.5px solid var(--color-border);
+  user-select: none;
+}
+.phone-input .phone-input-field {
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  min-height: 52px;
+  background: transparent;
+  flex: 1;
+  width: auto;
+  padding: 0 14px;
+  letter-spacing: 0.04em;
+}
+.phone-input .phone-input-field:focus {
+  border: none !important;
+  box-shadow: none !important;
+}
+.field.has-error .phone-input {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-danger) 14%, transparent);
+  animation: field-shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .field.has-error .phone-input { animation: none; }
+}
+
 
 /* Oddiy (eski) label — float bo'lmagan joylar uchun saqlanadi */
 .field:not(.field--float) .field-label {
@@ -1046,11 +1108,14 @@ html, body {
   .chip-check { transition: none; }
 }
 
-/* Skill grid — 2 ustun, ixcham kartalar (kvadrat emas — stretched emas) */
+/* Skill grid — DOIM kvadrat kartalar; ustun soni ekranga qarab */
 .chip-group-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  width: 100%;
+  max-width: 420px; /* mobil: 2 ta kvadrat qulay */
+  margin: 0 auto;
 }
 .chip-group-grid .chip {
   flex-direction: column;
@@ -1058,22 +1123,56 @@ html, body {
   align-items: center;
   gap: 6px;
   width: 100%;
-  aspect-ratio: auto;
-  min-height: 72px;
-  max-height: 96px;
+  aspect-ratio: 1 / 1; /* doim kvadrat */
   height: auto;
-  border-radius: 14px;
+  min-height: 0;
+  max-height: none;
+  border-radius: 16px;
   padding: 12px 8px;
   text-align: center;
+  box-sizing: border-box;
 }
 .chip-group-grid .chip svg {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
 }
 .chip-group-grid .chip span {
   font-size: 13px;
-  line-height: 1.25;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Planshet: 3 ustun, biroz kengroq */
+@media (min-width: 520px) {
+  .chip-group-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: 520px;
+    gap: 12px;
+  }
+  .chip-group-grid .chip svg { width: 26px; height: 26px; }
+  .chip-group-grid .chip span { font-size: 14px; }
+}
+
+/* Desktop: 4 ustun, o'rtacha o'lcham */
+@media (min-width: 768px) {
+  .chip-group-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    max-width: 640px;
+    gap: 14px;
+  }
+}
+
+/* Juda keng ekran: 4 ustun, kartalar o'sib ketmasin */
+@media (min-width: 1100px) {
+  .chip-group-grid {
+    max-width: 720px;
+  }
 }
 
 /* 2.4 — Scroll wrap + fade-edge */
@@ -1390,7 +1489,8 @@ html, body {
   border-radius: 50%;
   background: var(--color-success);
   display: flex; align-items: center; justify-content: center;
-  animation: success-glow-pulse 1.1s ease-out 0.5s 2;
+  animation: none;
+  box-shadow: none;
 }
 @keyframes success-glow-pulse {
   0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-success) 55%, transparent); }
@@ -1854,9 +1954,10 @@ html, body {
 }
 .empty-state-emoji {
   width: 64px; height: 64px;
-  border-radius: 50%;
-  background: var(--color-primary-100);
-  color: var(--color-primary-dark);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-primary);
   display: flex; align-items: center; justify-content: center;
 }
 
@@ -2345,7 +2446,7 @@ html, body {
   transition: background 0.15s ease; /* 3.4: yagona shu joyda yo'q edi, tuzatildi */
 }
 .state-action-btn:active { background: var(--color-primary-dark); }
-.empty-state-emoji.is-error { background: color-mix(in srgb, var(--color-danger) 12%, transparent); color: var(--color-danger); } /* 4.2 audit: qattiq rgba() color-mix()ga almashtirildi — dark mode'da --color-danger o'zgarganda fon ham to'g'ri moslashishi uchun (loyihadagi mavjud .field.has-error patterniga mos) */
+.empty-state-emoji.is-error { background: transparent; color: var(--color-danger); } /* 4.2 audit: qattiq rgba() color-mix()ga almashtirildi — dark mode'da --color-danger o'zgarganda fon ham to'g'ri moslashishi uchun (loyihadagi mavjud .field.has-error patterniga mos) */
 
 /* ============================================================
    1.3 — Spinner (Loading icon)

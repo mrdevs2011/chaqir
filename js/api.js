@@ -111,13 +111,18 @@ const ChaqirAPI = {
   findUserByPhone(phone) {
     return apiRequest(`/api/users/by-phone/${encodeURIComponent(phone)}`);
   },
+  phoneStatus(phone) {
+    return apiRequest(`/api/users/phone-status/${encodeURIComponent(phone)}`);
+  },
 
   // ---- Auth ----
   loginTelegram(initData) {
     return apiRequest('/api/auth/telegram', { method: 'POST', body: JSON.stringify({ initData }) });
   },
-  loginPassword(phone, password) {
-    return apiRequest('/api/auth/login', { method: 'POST', body: JSON.stringify({ phone, password }) });
+  loginPassword(phone, password, userId) {
+    const body = { phone, password };
+    if (userId != null && userId !== '') body.userId = userId;
+    return apiRequest('/api/auth/login', { method: 'POST', body: JSON.stringify(body) });
   },
   getMe() {
     return apiRequest('/api/auth/me');

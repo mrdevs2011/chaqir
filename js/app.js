@@ -113,9 +113,7 @@ function applyPlatformClasses() {
   document.documentElement.classList.toggle('tg-mini-app', tg);
   document.documentElement.classList.toggle('is-telegram', tg);
   document.documentElement.classList.toggle('is-web', !tg);
-  const pwdLabel = document.getElementById('reg-password-label');
-  if (pwdLabel) pwdLabel.textContent = tg ? 'Parol (ixtiyoriy)' : 'Parol';
-}
+  }
 
 function initTelegramMiniApp() {
   applyPlatformClasses();
@@ -395,6 +393,19 @@ function handleCardKeydown(event, arg) {
   }
 }
 
+function startRegistration() {
+  // Onboarding → avval telefon, keyin rol ("Siz kimsiz?")
+  appState._phoneFirstReg = true;
+  appState.phone = null;
+  appState.password = null;
+  appState._phoneHasPassword = false;
+  appState._reusePhonePassword = false;
+  const phoneEl = document.getElementById('manual-phone-field');
+  if (phoneEl) phoneEl.value = '';
+  checkManualPhone();
+  go('manual-phone');
+}
+
 function selectRole(role) {
   haptic.medium(); // 3.6: muhim tanlov — flow'ning butun yo'nalishini belgilaydi
   appState.role = role;
@@ -419,9 +430,23 @@ function selectRole(role) {
   document.getElementById('role-next-btn').classList.remove('is-disabled');
 }
 
-function goNextAfterRole() {
+async function goNextAfterRole() {
   if (!appState.role) return;
   haptic.medium(); // 3.6: flow bosqichini tasdiqlash
+  // Telefon birinchi oqimda: shu role allaqachon ochilganmi?
+  if (appState.phone) {
+    try {
+      const status = await ChaqirAPI.phoneStatus(appState.phone);
+      if (status && Array.isArray(status.roles) && status.roles.includes(appState.role)) {
+        const roleName = appState.role === 'worker' ? 'Ishchi' : 'Ish qidiruvchi';
+        showToast('Bu raqamda ' + roleName + ' hisobi allaqachon bor', 'error');
+        haptic.error();
+        return;
+      }
+      appState._phoneHasPassword = !!(status && status.hasPassword);
+    } catch (e) { /* davom etamiz */ }
+  }
+  appState._phoneFirstReg = false; // keyingi qadamlar oddiy oqim
   go('name-input');
 }
 
@@ -1091,9 +1116,11 @@ function updateRegionNextBtn() {
 function goAfterRegion() {
   if (!appState.region || !appState.district || !appState.mahalla) return;
   // MANTIQ: aniq manzil qadami faqat worker uchun (va ixtiyoriy).
-  // Employer to'g'ridan-to'g'ri telefon qadamiga o'tadi.
+  // Employer: telefon allaqachon bo'lsa — parol/finish, aks holda phone-share.
   if (appState.role === 'worker') {
     go('address-input');
+  } else if (appState.phone) {
+    continueAfterPhoneKnown();
   } else {
     go('phone-share');
   }
@@ -1104,12 +1131,14 @@ function goAfterRegion() {
 // ------------------------------------------------------------
 function goNextAfterAddress() {
   appState.address = document.getElementById('address-field').value.trim();
-  go('phone-share');
+  if (appState.phone) continueAfterPhoneKnown();
+  else go('phone-share');
 }
 
 function skipAddress() {
   appState.address = '';
-  go('phone-share');
+  if (appState.phone) continueAfterPhoneKnown();
+  else go('phone-share');
 }
 
 // ------------------------------------------------------------
@@ -1174,38 +1203,321 @@ function sharePhone() {
   go('manual-phone');
 }
 
+// Telefon maydoni: faqat raqam, bo'shliq bilan format (90 123 45 67)
+function onPhoneDigitsInput(el) {
+  const digits = String(el.value || '').replace(/\D/g, '').slice(0, 9);
+  let formatted = digits;
+  if (digits.length > 7) {
+    formatted = digits.slice(0, 2) + ' ' + digits.slice(2, 5) + ' ' + digits.slice(5, 7) + ' ' + digits.slice(7);
+  } else if (digits.length > 5) {
+    formatted = digits.slice(0, 2) + ' ' + digits.slice(2, 5) + ' ' + digits.slice(5);
+  } else if (digits.length > 2) {
+    formatted = digits.slice(0, 2) + ' ' + digits.slice(2);
+  }
+  el.value = formatted;
+}
+
+function getPhoneDigits(elOrId) {
+  const el = typeof elOrId === 'string' ? document.getElementById(elOrId) : elOrId;
+  if (!el) return '';
+  return String(el.value || '').replace(/\D/g, '').slice(0, 9);
+}
+
+function fullPhoneFromDigits(digits) {
+  const d = String(digits || '').replace(/\D/g, '');
+  if (!d) return '';
+  // Allaqachon +998 yoki 998 bilan boshlansa qayta qo'shmaymiz
+  if (d.startsWith('998') && d.length >= 12) return '+' + d.slice(0, 12);
+  return '+998' + d.slice(0, 9);
+}
+
 function checkManualPhone() {
-  const val = document.getElementById('manual-phone-field').value.trim();
+  const digits = getPhoneDigits('manual-phone-field');
+  const phoneOk = digits.length === 9;
+  document.getElementById('manual-phone-next-btn').classList.toggle('is-disabled', !phoneOk);
+  clearFieldError('field-manual-phone');
+}
+
+function checkRegPassword() {
   const pwdEl = document.getElementById('reg-password-field');
   const pwd = pwdEl ? pwdEl.value : '';
-  const phoneOk = val.length >= 9;
-  // Web: parol majburiy (≥4). Telegram: ixtiyoriy, lekin kiritilsa ≥4
-  const pwdOk = isWebApp() ? pwd.length >= 4 : (!pwd || pwd.length >= 4);
-  document.getElementById('manual-phone-next-btn').classList.toggle('is-disabled', !(phoneOk && pwdOk));
-  clearFieldError('field-manual-phone');
+  const ok = pwd.length >= 4;
+  const btn = document.getElementById('reg-password-next-btn');
+  if (btn) btn.classList.toggle('is-disabled', !ok);
   clearFieldError('field-reg-password');
 }
 
-function submitManualPhone() {
-  const val = document.getElementById('manual-phone-field').value.trim();
-  if (val.length < 9) {
+async function submitManualPhone() {
+  const digits = getPhoneDigits('manual-phone-field');
+  if (digits.length !== 9) {
     setFieldError('field-manual-phone');
     return;
   }
+  const phone = fullPhoneFromDigits(digits);
+  appState.phone = phone;
+  const btn = document.getElementById('manual-phone-next-btn');
+  if (btn) btn.classList.add('is-disabled');
+  try {
+    let hasPassword = false;
+    let status = null;
+    try {
+      status = await ChaqirAPI.phoneStatus(phone);
+      hasPassword = !!(status && status.hasPassword);
+    } catch (e) {
+      hasPassword = false;
+    }
+    appState._phoneHasPassword = hasPassword;
+
+    // 1) Ro'yxatdan o'tish BOSHI: telefon → mavjud hisob / "Siz kimsiz?"
+    if (appState._phoneFirstReg || !appState.name) {
+      appState._phoneFirstReg = true;
+      const roles = (status && Array.isArray(status.roles)) ? status.roles : [];
+      const accounts = (status && Array.isArray(status.accounts)) ? status.accounts : [];
+      appState._phoneAccounts = accounts;
+      appState._phoneRoles = roles;
+
+      if (roles.length === 0) {
+        // Umuman hisob yo'q → rol tanlash
+        go('role-select');
+        return;
+      }
+      if (roles.length >= 2) {
+        // Ikkala role ham bor → kirishga yo'naltiramiz
+        showToast('Bu raqamda ikkala hisob ham bor. Kirish orqali davom eting.', 'info');
+        // Login telefon maydonini to'ldiramiz
+        const loginPhone = document.getElementById('login-phone-field');
+        if (loginPhone) {
+          const d = getPhoneDigits('manual-phone-field');
+          let formatted = d;
+          if (d.length > 7) formatted = d.slice(0, 2) + ' ' + d.slice(2, 5) + ' ' + d.slice(5, 7) + ' ' + d.slice(7);
+          else if (d.length > 5) formatted = d.slice(0, 2) + ' ' + d.slice(2, 5) + ' ' + d.slice(5);
+          else if (d.length > 2) formatted = d.slice(0, 2) + ' ' + d.slice(2);
+          loginPhone.value = formatted;
+          checkLoginPhone();
+        }
+        go('login-manual-phone');
+        return;
+      }
+      // Faqat 1 ta role → tanlov ekrani
+      renderRegExistingChoice(roles[0], accounts);
+      go('reg-existing-choice');
+      return;
+    }
+
+    // 2) Oxirgi qadam (eski oqim / Telegram fallback): role allaqachon tanlangan
+    if (status && Array.isArray(status.roles) && appState.role && status.roles.includes(appState.role)) {
+      const roleName = appState.role === 'worker' ? 'Ishchi' : 'Ish qidiruvchi';
+      showToast('Bu raqamda ' + roleName + ' hisobi allaqachon bor', 'error');
+      haptic.error();
+      return;
+    }
+    if (hasPassword) {
+      appState.password = null;
+      appState._reusePhonePassword = true;
+      await finishRegistration();
+      return;
+    }
+    showRegPasswordScreen(hasPassword ? 'verify' : 'create');
+  } catch (e) {
+    showToast(e.message || 'Xatolik', 'error');
+    haptic.error();
+  } finally {
+    if (btn) {
+      btn.classList.remove('is-disabled');
+      checkManualPhone();
+    }
+  }
+}
+
+// Telefon allaqachon kiritilgan bo'lsa — oxirida phone-share o'tkazib yuboriladi
+
+const ROLE_ICONS = {
+  worker: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+  employer: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>'
+};
+
+function renderRegExistingChoice(existingRole, accounts) {
+  const otherRole = existingRole === 'worker' ? 'employer' : 'worker';
+  const existingLabel = existingRole === 'worker' ? 'Ishchi' : 'Ish qidiruvchi';
+  const otherLabel = otherRole === 'worker' ? 'Ishchi' : 'Ish qidiruvchi';
+  const otherAction = otherRole === 'worker' ? 'Ishchi hisobini ochish' : 'Ishchi qidirish hisobini ochish';
+  const otherSub = otherRole === 'worker' ? 'Ish topmoqchiman' : 'Ishchi izlayapman';
+  const acc = (accounts || []).find(a => a.role === existingRole);
+  const namePart = acc && acc.name ? (acc.name + ' · ') : '';
+
+  appState._existingRole = existingRole;
+  appState._otherRole = otherRole;
+  appState._existingAccountId = acc ? acc.id : null;
+
+  const title = document.getElementById('reg-existing-title');
+  const body = document.getElementById('reg-existing-body');
+  if (title) title.textContent = existingLabel + ' hisobingiz bor';
+  if (body) {
+    body.textContent = 'Sizning ' + existingLabel.toLowerCase() +
+      ' hisobingiz bor ekan. Shu hisob bilan davom etasizmi yoki ' +
+      otherLabel.toLowerCase() + ' hisobini ochasizmi?';
+  }
+
+  const cIcon = document.getElementById('reg-existing-continue-icon');
+  const cTitle = document.getElementById('reg-existing-continue-title');
+  const cSub = document.getElementById('reg-existing-continue-sub');
+  if (cIcon) cIcon.innerHTML = ROLE_ICONS[existingRole] || '';
+  if (cTitle) cTitle.textContent = 'Shu hisob bilan davom etish';
+  if (cSub) cSub.textContent = namePart + existingLabel;
+
+  const oIcon = document.getElementById('reg-existing-other-icon');
+  const oTitle = document.getElementById('reg-existing-other-title');
+  const oSub = document.getElementById('reg-existing-other-sub');
+  if (oIcon) oIcon.innerHTML = ROLE_ICONS[otherRole] || '';
+  if (oTitle) oTitle.textContent = otherAction;
+  if (oSub) oSub.textContent = otherSub;
+}
+
+function continueExistingAccount() {
+  // Mavjud hisobga kirish — parol so'raladi (login)
+  const loginPhone = document.getElementById('login-phone-field');
+  if (loginPhone) {
+    const d = String(appState.phone || '').replace(/\D/g, '');
+    const local = d.startsWith('998') ? d.slice(3) : d;
+    let formatted = local.slice(0, 9);
+    if (formatted.length > 7) {
+      formatted = formatted.slice(0, 2) + ' ' + formatted.slice(2, 5) + ' ' + formatted.slice(5, 7) + ' ' + formatted.slice(7);
+    } else if (formatted.length > 5) {
+      formatted = formatted.slice(0, 2) + ' ' + formatted.slice(2, 5) + ' ' + formatted.slice(5);
+    } else if (formatted.length > 2) {
+      formatted = formatted.slice(0, 2) + ' ' + formatted.slice(2);
+    }
+    loginPhone.value = formatted;
+    checkLoginPhone();
+  }
+  // Login da faqat shu accountni tanlash uchun eslab qolamiz
+  appState._preferredLoginUserId = appState._existingAccountId || null;
+  go('login-manual-phone');
+}
+
+function openOtherRoleAccount() {
+  const role = appState._otherRole;
+  if (!role) {
+    go('role-select');
+    return;
+  }
+  appState.role = role;
+  selectRole(role);
+  appState._phoneFirstReg = false;
+  // 1 nomer = 1 parol: eski parolni tasdiqlash majburiy
+  showRegPasswordScreen('verify');
+}
+
+async function continueAfterPhoneKnown() {
+  if (!appState.phone) {
+    go('phone-share');
+    return;
+  }
+  // Role dublikat tekshiruvi
+  try {
+    const status = await ChaqirAPI.phoneStatus(appState.phone);
+    if (status && Array.isArray(status.roles) && appState.role && status.roles.includes(appState.role)) {
+      const roleName = appState.role === 'worker' ? 'Ishchi' : 'Ish qidiruvchi';
+      showToast('Bu raqamda ' + roleName + ' hisobi allaqachon bor', 'error');
+      haptic.error();
+      return;
+    }
+    appState._phoneHasPassword = !!(status && status.hasPassword);
+  } catch (e) { /* ignore */ }
+
+  // 1 nomer = 1 parol: parol bo'lsa tasdiqlash, bo'lmasa yaratish
+  // Agar allaqachon verify qilingan bo'lsa (boshqa role ochishda) — to'g'ridan finish
+  if (appState._passwordVerified && appState.password) {
+    appState._reusePhonePassword = true;
+    await finishRegistration();
+    return;
+  }
+  if (appState._phoneHasPassword) {
+    showRegPasswordScreen('verify');
+    return;
+  }
+  showRegPasswordScreen('create');
+}
+
+function showRegPasswordScreen(mode) {
+  // mode: 'create' | 'verify'
+  appState._regPasswordMode = mode === 'verify' ? 'verify' : 'create';
+  const heading = document.getElementById('reg-password-heading');
+  const hint = document.getElementById('reg-password-hint');
+  const label = document.getElementById('reg-password-label');
+  const pwdEl = document.getElementById('reg-password-field');
+  if (pwdEl) pwdEl.value = '';
+  if (appState._regPasswordMode === 'verify') {
+    if (heading) heading.textContent = 'Parolingizni kiriting';
+    if (hint) hint.textContent = 'Bu raqam uchun oldin qo\'yilgan parol — ishchi va ish qidiruvchi hisoblari uchun bir xil.';
+    if (label) label.textContent = 'Mavjud parol';
+    if (pwdEl) pwdEl.setAttribute('autocomplete', 'current-password');
+  } else {
+    if (heading) heading.textContent = 'Parol yarating';
+    if (hint) hint.textContent = 'Keyin shu parol bilan kirasiz (ikkala hisob uchun ham). Kamida 4 belgi.';
+    if (label) label.textContent = 'Parol';
+    if (pwdEl) pwdEl.setAttribute('autocomplete', 'new-password');
+  }
+  checkRegPassword();
+  go('reg-password');
+}
+
+async function submitRegPassword() {
   const pwdEl = document.getElementById('reg-password-field');
   const pwd = pwdEl ? pwdEl.value : '';
-  if (isWebApp() && pwd.length < 4) {
+  if (pwd.length < 4) {
     setFieldError('field-reg-password');
-    showToast('Saytda kirish uchun parol kerak (kamida 4 belgi)', 'error');
+    showToast('Parol kamida 4 belgi bo\'lishi kerak', 'error');
     return;
   }
-  if (pwd && pwd.length < 4) {
-    setFieldError('field-reg-password');
-    return;
+  const mode = appState._regPasswordMode || 'create';
+  const btn = document.getElementById('reg-password-next-btn');
+  if (btn) btn.classList.add('is-disabled');
+
+  try {
+    if (mode === 'verify') {
+      // Mavjud parolni backend orqali tekshiramiz (login, session saqlamaymiz)
+      try {
+        const res = await ChaqirAPI.loginPassword(appState.phone, pwd);
+        // needsChoice yoki user — parol to'g'ri
+        if (!(res && (res.user || res.needsChoice))) {
+          setFieldError('field-reg-password');
+          showToast('Parol noto\'g\'ri', 'error');
+          haptic.error();
+          return;
+        }
+        // Login tokenini saqlamaymiz — bu faqat tekshiruv
+        // (agar token qaytsa, uni ishlatmaymiz; yangi hisob ochilgach yangi session)
+      } catch (e) {
+        setFieldError('field-reg-password');
+        showToast(e.message || 'Parol noto\'g\'ri', 'error');
+        haptic.error();
+        return;
+      }
+      // Bir xil parol — yangi hisobga ham shu parol yoziladi
+      appState.password = pwd;
+      appState._reusePhonePassword = true;
+      appState._passwordVerified = true;
+      // Ikkinchi role ro'yxati: ism va boshqa qadamlar
+      if (!appState.name) {
+        go('name-input');
+      } else {
+        await finishRegistration();
+      }
+      return;
+    }
+
+    // Yangi parol yaratish
+    appState.password = pwd;
+    appState._reusePhonePassword = false;
+    appState._passwordVerified = true;
+    await finishRegistration();
+  } finally {
+    if (btn) {
+      btn.classList.remove('is-disabled');
+      checkRegPassword();
+    }
   }
-  appState.phone = val;
-  appState.password = pwd || null;
-  finishRegistration();
 }
 
 // MANTIQ: ro'yxatdan o'tish endi backend'ga yoziladi (POST /api/workers
@@ -1336,9 +1648,14 @@ async function tryLoginByTelegram() {
   return false;
 }
 
-async function tryLoginByPassword(phone, password) {
+async function tryLoginByPassword(phone, password, userId) {
   try {
-    const res = await ChaqirAPI.loginPassword(phone, password);
+    const res = await ChaqirAPI.loginPassword(phone, password, userId);
+    // Bir raqamda 2+ hisob — tanlash ekrani
+    if (res && res.needsChoice && Array.isArray(res.accounts) && res.accounts.length > 1) {
+      appState._pendingLogin = { phone, password, accounts: res.accounts };
+      return 'choice';
+    }
     if (res && res.user) {
       applyAuthUser(res.user, res.token);
       return true;
@@ -1348,6 +1665,59 @@ async function tryLoginByPassword(phone, password) {
     throw e;
   }
   return false;
+}
+
+function roleLabel(role) {
+  return role === 'worker' ? 'Ishchi' : 'Ish qidiruvchi';
+}
+
+function roleSub(role) {
+  return role === 'worker' ? 'Ish topmoqchiman' : 'Ishchi izlayapman';
+}
+
+function renderLoginAccountChoice() {
+  const list = document.getElementById('login-account-list');
+  if (!list) return;
+  const pending = appState._pendingLogin;
+  if (!pending || !pending.accounts) {
+    list.innerHTML = '';
+    return;
+  }
+  list.innerHTML = pending.accounts.map(acc => {
+    const title = roleLabel(acc.role);
+    const sub = (acc.name ? acc.name + ' · ' : '') + roleSub(acc.role);
+    const icon = acc.role === 'worker'
+      ? '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>'
+      : '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
+    return '<div class="role-card" role="button" tabindex="0" aria-label="' + title + '" onclick="selectLoginAccount(' + acc.id + ')">' +
+      '<div class="role-emoji" aria-hidden="true">' + icon + '</div>' +
+      '<div class="role-text">' +
+        '<div class="role-title">' + title + '</div>' +
+        '<div class="role-sub">' + sub + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+async function selectLoginAccount(userId) {
+  const pending = appState._pendingLogin;
+  if (!pending) {
+    showToast('Qayta login qiling', 'error');
+    go('login-manual-phone');
+    return;
+  }
+  try {
+    const ok = await tryLoginByPassword(pending.phone, pending.password, userId);
+    if (ok === true) {
+      appState._pendingLogin = null;
+      await goHome();
+      return;
+    }
+    showToast('Kirish muvaffaqiyatsiz', 'error');
+  } catch (e) {
+    showToast(e.message || 'Telefon yoki parol noto\'g\'ri', 'error');
+    haptic.error();
+  }
 }
 
 async function loginShare() {
@@ -1386,20 +1756,20 @@ async function loginShare() {
 
 // MANTIQ: "Qo'lda kiritish" — telefon + parol bilan POST /api/auth/login
 function checkLoginPhone() {
-  const phone = document.getElementById('login-phone-field').value.trim();
+  const digits = getPhoneDigits('login-phone-field');
   const pwdEl = document.getElementById('login-password-field');
   const pwd = pwdEl ? pwdEl.value : '';
-  const ok = phone.length >= 9 && pwd.length >= 4;
+  const ok = digits.length === 9 && pwd.length >= 4;
   document.getElementById('login-phone-next-btn').classList.toggle('is-disabled', !ok);
   clearFieldError('field-login-phone');
   clearFieldError('field-login-password');
 }
 
 async function loginManualSubmit() {
-  const phone = document.getElementById('login-phone-field').value.trim();
+  const digits = getPhoneDigits('login-phone-field');
   const pwdEl = document.getElementById('login-password-field');
   const password = pwdEl ? pwdEl.value : '';
-  if (phone.length < 9) {
+  if (digits.length !== 9) {
     setFieldError('field-login-phone');
     return;
   }
@@ -1407,12 +1777,20 @@ async function loginManualSubmit() {
     setFieldError('field-login-password');
     return;
   }
+  const phone = fullPhoneFromDigits(digits);
   appState.phone = phone;
   const btn = document.getElementById('login-phone-next-btn');
   if (btn) btn.classList.add('is-disabled');
   try {
-    const ok = await tryLoginByPassword(phone, password);
-    if (ok) {
+    const preferredId = appState._preferredLoginUserId || null;
+    const ok = await tryLoginByPassword(phone, password, preferredId);
+    appState._preferredLoginUserId = null;
+    if (ok === 'choice') {
+      renderLoginAccountChoice();
+      go('login-account-choice');
+      return;
+    }
+    if (ok === true) {
       await goHome();
       return;
     }
@@ -1492,12 +1870,10 @@ async function renderHome() {
 function renderHomeFeed() {
   const grid = document.getElementById('home-worker-feed');
   grid.innerHTML = '';
-  // 2.9: stagger-animatsiya — har bir kartaga --stagger-index custom
-  // property beriladi, CSS (`feed-card-in` + calc()) shu index'dan
-  // kechikishni o'zi hisoblab chiqadi. Karta soni o'zgarsa ham
-  // (masalan kelajakda backend ko'proq worker qaytarsa) JS tomonda
-  // hech narsa o'zgartirish kerak emas — CSS min() bilan uzoq
-  // ro'yxatlarda ham kechikishni cheklab qo'yadi.
+  if (!MOCK_WORKERS || MOCK_WORKERS.length === 0) {
+    grid.innerHTML = '<div class="body" style="padding:12px;opacity:0.7;">Hali ishchi yo'q — birinchi ro'yxatdan o'tganlar shu yerda chiqadi</div>';
+    return;
+  }
   MOCK_WORKERS.forEach((worker, index) => {
     const card = document.createElement('div');
     card.className = 'worker-feed-card';
