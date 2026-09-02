@@ -1964,7 +1964,7 @@ function renderHomeFeed() {
   const grid = document.getElementById('home-worker-feed');
   grid.innerHTML = '';
   if (!MOCK_WORKERS || MOCK_WORKERS.length === 0) {
-    grid.innerHTML = '<div class="body" style="padding:12px;opacity:0.7;">Hali ishchi yo'q — birinchi ro'yxatdan o'tganlar shu yerda chiqadi</div>';
+    grid.innerHTML = '<div class="body" style="padding:12px;opacity:0.7;">Hali ishchi yo\'q — birinchi ro\'yxatdan o\'tganlar shu yerda chiqadi</div>';
     return;
   }
   MOCK_WORKERS.forEach((worker, index) => {
