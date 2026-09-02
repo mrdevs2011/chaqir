@@ -125,6 +125,15 @@ const ChaqirAPI = {
   logout() {
     return apiRequest('/api/auth/logout', { method: 'POST' });
   },
+  createTransferCode() {
+    return apiRequest('/api/auth/transfer', { method: 'POST' });
+  },
+  consumeTransferCode(code) {
+    return apiRequest('/api/auth/transfer/consume', {
+      method: 'POST',
+      body: JSON.stringify({ code })
+    });
+  },
 
   // ---- Favorites ----
   getFavorites(employerId) {

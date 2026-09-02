@@ -95,38 +95,50 @@ function getTg() {
   }
 }
 
+// Haqiqiy Telegram Mini App: initData bo'sh emas.
+// Oddiy saytda telegram-web-app.js yuklansa ham initData "" bo'ladi.
 function isTelegramMiniApp() {
   const tg = getTg();
-  // initData bo'sh string brauzerda ham bo'lishi mumkin; platform
-  // yoki class bilan ishonchliroq aniqlaymiz.
-  return !!(tg && (tg.initData || tg.initDataUnsafe?.user || document.documentElement.classList.contains('tg-mini-app')));
+  if (!tg) return false;
+  if (tg.initData && String(tg.initData).length > 0) return true;
+  return false;
+}
+
+function isWebApp() {
+  return !isTelegramMiniApp();
+}
+
+function applyPlatformClasses() {
+  const tg = isTelegramMiniApp();
+  document.documentElement.classList.toggle('tg-mini-app', tg);
+  document.documentElement.classList.toggle('is-telegram', tg);
+  document.documentElement.classList.toggle('is-web', !tg);
+  const pwdLabel = document.getElementById('reg-password-label');
+  if (pwdLabel) pwdLabel.textContent = tg ? 'Parol (ixtiyoriy)' : 'Parol';
 }
 
 function initTelegramMiniApp() {
+  applyPlatformClasses();
   const tg = getTg();
-  if (!tg) return;
+  if (!tg || !isTelegramMiniApp()) return;
 
   try {
-    document.documentElement.classList.add('tg-mini-app');
     tg.ready();
     tg.expand();
-    // Header / background ranglari — ilova tokenlariga mos
     const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() || '#FAFAFA';
     const header = getComputedStyle(document.documentElement).getPropertyValue('--color-surface').trim() || bg;
     try { tg.setHeaderColor(header.startsWith('#') ? header : 'secondary_bg_color'); } catch (e) {}
     try { tg.setBackgroundColor(bg.startsWith('#') ? bg : 'bg_color'); } catch (e) {}
     try { tg.enableClosingConfirmation(); } catch (e) {}
 
-    // Native orqaga tugmasi
     if (tg.BackButton) {
       tg.BackButton.onClick(() => goBack());
     }
 
-    // Tema o'zgarsa (Telegram sozlamasi)
     tg.onEvent && tg.onEvent('themeChanged', () => {
       try {
         const saved = localStorage.getItem('chaqir-theme');
-        if (saved === 'dark' || saved === 'light') return; // foydalanuvchi tanlovi ustun
+        if (saved === 'dark' || saved === 'light') return;
         document.documentElement.setAttribute('data-theme', tg.colorScheme === 'dark' ? 'dark' : 'light');
       } catch (e) {}
     });
@@ -145,7 +157,11 @@ function syncTelegramBackButton() {
 }
 
 function go(screenId) {
-  // Hozirgi ekranni stack'ga push qilamiz — keyin orqaga qaytish uchun
+  // Web: Telegram contact ekranlari kerak emas
+  if (isWebApp()) {
+    if (screenId === 'phone-share') screenId = 'manual-phone';
+    if (screenId === 'login') screenId = 'login-manual-phone';
+  }
   screenHistory.push(currentScreen);
   renderScreen(screenId, 'forward');
 }
@@ -250,7 +266,10 @@ function renderTabBar(activeScreenId) {
 }
 
 function renderScreen(screenId, direction) {
-  // Chatdan chiqilganda polling to'xtaydi
+  // Web: phone-share o'rniga to'g'ridan-to'g'ri raqam kiritish
+  if (screenId === 'phone-share' && typeof isWebApp === 'function' && isWebApp()) {
+    screenId = 'manual-phone';
+  }
   if (screenId !== 'chat-detail') stopChatPolling();
   // MANTIQ (3.1 roadmap punkti): oldin hammasi bitta "screen-in"
   // animatsiyaga ega edi — forward (go), back (goBack) va tab
@@ -1113,20 +1132,28 @@ function applyTelegramUserDefaults() {
 }
 
 function sharePhone() {
+  // Web: Telegram contact yo'q — faqat qo'lda kiritish
+  if (isWebApp()) {
+    go('manual-phone');
+    return;
+  }
+
   const tg = getTg();
-  // Real Telegram Mini App: kontakt so'rash (raqam botga ketadi;
-  // frontend demo uchun muvaffaqiyatdan keyin flow davom etadi)
-  if (tg && typeof tg.requestContact === 'function' && isTelegramMiniApp()) {
+  if (tg && typeof tg.requestContact === 'function') {
     try {
       const done = (ok) => {
         if (ok) {
           applyTelegramUserDefaults();
-                    finishRegistration();
+          if (appState.phone) finishRegistration();
+          else {
+            showToast("Raqam olinmadi — qo'lda kiriting", 'info');
+            go('manual-phone');
+          }
         } else {
-          showToast('Raqam ulashilmadi — qo\'lda kiriting', 'info');
+          showToast("Raqam ulashilmadi — qo'lda kiriting", 'info');
+          go('manual-phone');
         }
       };
-      // API variantlari: callback yoki contactRequested event
       if (typeof tg.onEvent === 'function') {
         const onContact = (payload) => {
           try { tg.offEvent('contactRequested', onContact); } catch (e) {}
@@ -1141,20 +1168,19 @@ function sharePhone() {
       }
       return;
     } catch (e) {
-      /* fallback mock */
+      console.warn('requestContact:', e);
     }
   }
-  applyTelegramUserDefaults();
-    finishRegistration();
+  go('manual-phone');
 }
 
 function checkManualPhone() {
   const val = document.getElementById('manual-phone-field').value.trim();
   const pwdEl = document.getElementById('reg-password-field');
   const pwd = pwdEl ? pwdEl.value : '';
-  // Telefon majburiy; parol bo'sh yoki ≥4 belgi bo'lishi mumkin
   const phoneOk = val.length >= 9;
-  const pwdOk = !pwd || pwd.length >= 4;
+  // Web: parol majburiy (≥4). Telegram: ixtiyoriy, lekin kiritilsa ≥4
+  const pwdOk = isWebApp() ? pwd.length >= 4 : (!pwd || pwd.length >= 4);
   document.getElementById('manual-phone-next-btn').classList.toggle('is-disabled', !(phoneOk && pwdOk));
   clearFieldError('field-manual-phone');
   clearFieldError('field-reg-password');
@@ -1168,6 +1194,11 @@ function submitManualPhone() {
   }
   const pwdEl = document.getElementById('reg-password-field');
   const pwd = pwdEl ? pwdEl.value : '';
+  if (isWebApp() && pwd.length < 4) {
+    setFieldError('field-reg-password');
+    showToast('Saytda kirish uchun parol kerak (kamida 4 belgi)', 'error');
+    return;
+  }
   if (pwd && pwd.length < 4) {
     setFieldError('field-reg-password');
     return;
@@ -1320,32 +1351,36 @@ async function tryLoginByPassword(phone, password) {
 }
 
 async function loginShare() {
+  // Web — Telegram auth yo'q
+  if (isWebApp()) {
+    go('login-manual-phone');
+    return;
+  }
+
   applyTelegramUserDefaults();
-  
-  // Avval Telegram initData orqali haqiqiy auth
+
+  // 1) initData bilan session
   if (await tryLoginByTelegram()) {
     await goHome();
     return;
   }
 
+  // 2) Contact so'rash (ixtiyoriy), keyin yana initData
   const tg = getTg();
-  if (tg && typeof tg.requestContact === 'function' && isTelegramMiniApp()) {
+  if (tg && typeof tg.requestContact === 'function') {
     try {
       tg.requestContact(async (ok) => {
         if (ok) applyTelegramUserDefaults();
-        // Telegram contact ulashganda ham token kerak — password yo'q,
-        // shuning uchun faqat telegram auth ishlasa home'ga o'tamiz.
         if (await tryLoginByTelegram()) {
           await goHome();
           return;
         }
-        showToast('Avval ro\'yxatdan o\'ting yoki parol bilan kiring', 'info');
+        showToast("Avval ro'yxatdan o'ting yoki parol bilan kiring", 'info');
         go('login-manual-phone');
       });
       return;
     } catch (e) {}
   }
-  // Brauzerda "Raqamni ulashish" — parol formaga yo'naltiramiz
   go('login-manual-phone');
 }
 
@@ -2811,13 +2846,18 @@ function renderProfile() {
   const portfolioBtn = appState.role === 'worker' ? `
     <button class="btn btn-secondary" style="width:100%;margin:8px 0;" onclick="openPortfolioSheet()">Portfolio ga rasm qo'shish</button>
   ` : '';
+  // Telegram Mini App: shu hisob bilan brauzerda ochish
+  const webTransferBtn = isTelegramMiniApp() ? `
+    <button class="btn btn-primary" style="width:100%;margin:8px 0;" onclick="openWebWithSession()">Saytda ochish (shu hisob)</button>
+    <div class="body" style="opacity:0.7;font-size:13px;margin-bottom:8px;">Link ochilishi bilan kod darhol yutiladi — URL da qolmaydi</div>
+  ` : '';
 
   content.innerHTML = statsCard + themeRow + rows.map(([label, value]) => `
     <div class="profile-row">
       <span class="profile-row-label">${PROFILE_ROW_ICONS[label] || ''}${label}</span>
       <span class="profile-row-value${label === 'Telefon' ? ' profile-row-value--numeric' : ''}">${escapeHtml(String(value))}</span>
     </div>
-  `).join('') + portfolioBtn;
+  `).join('') + portfolioBtn + webTransferBtn;
 }
 
 // ============================================================
@@ -3098,6 +3138,82 @@ async function restoreSession() {
   }
 }
 
+// ------------------------------------------------------------
+// Telegram → Web sessiya ko'chirish
+// Mini App: openWebWithSession() → bir martalik link
+// Web boot: ?transfer=CODE ni yutib token oladi
+// ------------------------------------------------------------
+function getWebAppOrigin() {
+  // Production sayt (Telegram 3 nuqta → brauzer shu URL ni ochadi)
+  // Localda joriy origin
+  try {
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      return location.origin + location.pathname;
+    }
+  } catch (e) {}
+  return location.origin + (location.pathname || '/');
+}
+
+async function openWebWithSession() {
+  if (!appState.token) {
+    showToast('Avval tizimga kiring', 'info');
+    return;
+  }
+  try {
+    const { code } = await ChaqirAPI.createTransferCode();
+    const origin = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ? (location.origin + location.pathname)
+      : (location.origin + (location.pathname || '/'));
+    const base = origin.replace(/\/$/, '');
+    // Hash (#t=) — ba'zi loglarda query kamroq qoladi; baribir brauzer darhol yutadi
+    const url = base + '#t=' + encodeURIComponent(code);
+    // MUHIM: clipboard ga YOZILMAYDI — faqat darhol ochiladi
+    const tg = getTg();
+    if (tg && typeof tg.openLink === 'function') {
+      tg.openLink(url, { try_instant_view: false });
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+    showToast('Brauzerda ochilmoqda…', 'info');
+  } catch (e) {
+    showToast(e.message || 'Ochilmadi', 'error');
+  }
+}
+
+async function tryConsumeTransferFromUrl() {
+  // Early <head> skripti transfer ni allaqachon yutgan bo'lishi mumkin.
+  // Agar URL da hali kod qolgan bo'lsa (eski cache) — shu yerda yutamiz.
+  let code = null;
+  try {
+    const u = new URL(window.location.href);
+    code = u.searchParams.get('transfer');
+    if (!code && u.hash) {
+      const m = /^#t=([A-Za-z0-9]+)/.exec(u.hash);
+      if (m) code = m[1];
+    }
+    if (!code) {
+      // Token endigina early script qo'ygan bo'lishi mumkin
+      return !!getStoredToken();
+    }
+    u.searchParams.delete('transfer');
+    u.hash = '';
+    window.history.replaceState({}, '', u.pathname + (u.searchParams.toString() ? '?' + u.searchParams.toString() : ''));
+  } catch (e) {
+    return !!getStoredToken();
+  }
+  try {
+    const res = await ChaqirAPI.consumeTransferCode(code);
+    if (res && res.token && res.user) {
+      applyAuthUser(res.user, res.token);
+      return true;
+    }
+  } catch (e) {
+    // Kod allaqachon early script tomonidan ishlatilgan bo'lishi mumkin
+    if (getStoredToken()) return true;
+  }
+  return !!getStoredToken();
+}
+
 function revealApp() {
   document.documentElement.classList.remove('session-booting');
   document.documentElement.classList.add('boot-ready');
@@ -3107,15 +3223,15 @@ function revealApp() {
   initTelegramMiniApp();
   applyAbVariant();
 
-  // Avval sessiya — token bo'lsa onboarding flashsiz home
-  const restored = await restoreSession();
+  // 1) ?transfer=CODE — Telegram hisobini webga ko'chirish
+  const transferred = await tryConsumeTransferFromUrl();
+  // 2) Mavjud token
+  const restored = transferred || await restoreSession();
   if (restored) {
-    // Ma'lumotlarni parallel yuklash, UI ni darhol home qilish
     const dataPromise = loadInitialData();
     await goHome();
     revealApp();
     await dataPromise;
-    // Home feed yangilansin (API dan)
     if (currentScreen === 'home' && appState.role === 'employer') {
       try { await renderHome(); } catch (e) { /* ignore */ }
     }

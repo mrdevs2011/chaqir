@@ -17,6 +17,57 @@
 })();
 </script>
 
+<script>
+/* Transfer: URL dagi kodni inson nusxa olishidan OLDIN yutish.
+   1) ?transfer= yoki #t= o'qiladi
+   2) darhol POST consume (kod bir martalik — serverda yutiladi)
+   3) token localStorage
+   4) location.replace(toza URL) — history da transfer qolmaydi */
+(function () {
+  try {
+    var code = null;
+    var params = new URLSearchParams(window.location.search);
+    code = params.get('transfer');
+    if (!code && window.location.hash) {
+      var hm = /^#t=([A-Za-z0-9]+)/.exec(window.location.hash);
+      if (hm) code = hm[1];
+    }
+    if (!code) return;
+
+    document.documentElement.classList.add('session-booting', 'transfer-consuming');
+
+    var API_BASE = 'https://satisfy-endurance-mooned.ngrok-free.dev';
+    var done = false;
+    function cleanUrl() {
+      if (done) return;
+      done = true;
+      try {
+        window.location.replace(window.location.origin + window.location.pathname);
+      } catch (e) {
+        window.location.href = window.location.pathname;
+      }
+    }
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', API_BASE + '/api/auth/transfer/consume', false); // SINXRON — sahifa chizilishidan oldin
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.setRequestHeader('ngrok-skip-browser-warning', 'true');
+    try {
+      xhr.send(JSON.stringify({ code: code }));
+      // Faqat 2xx + token: login. Aks holda (muddati o'tgan/ishlatilgan) — login yo'q
+      if (xhr.status >= 200 && xhr.status < 300) {
+        var data = JSON.parse(xhr.responseText || '{}');
+        if (data.token) {
+          try { localStorage.setItem('chaqir-token', data.token); } catch (e) {}
+        }
+      }
+    } catch (e) {}
+    // Har qanday holatda transfer URL ni olib tashla → asosiy domen
+    cleanUrl();
+  } catch (e) {}
+})();
+</script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Chaqir — Telegram Mini App</title>
@@ -28,28 +79,55 @@
 <meta name="telegram-web-app" content="true">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
-  /* Theme + Telegram Mini App early boot (CSS dan oldin) */
+  /* Theme + platform early boot (Telegram vs Web) */
   (function () {
     try {
       var tg = window.Telegram && Telegram.WebApp;
-      if (tg && typeof tg.initData !== 'undefined') {
-        document.documentElement.classList.add('tg-mini-app');
+      // Faqat haqiqiy Mini App: initData bo'sh bo'lmagan string
+      var isTg = !!(tg && tg.initData && String(tg.initData).length > 0);
+      if (isTg) {
+        document.documentElement.classList.add('tg-mini-app', 'is-telegram');
+        document.documentElement.classList.remove('is-web');
         var saved = null;
         try { saved = localStorage.getItem('chaqir-theme'); } catch (e) {}
         if (saved === 'dark' || saved === 'light') {
           document.documentElement.setAttribute('data-theme', saved);
-        } else {
-          document.documentElement.setAttribute('data-theme', tg.colorScheme === 'dark' ? 'dark' : 'light');
+        } else if (tg.colorScheme === 'dark' || tg.colorScheme === 'light') {
+          document.documentElement.setAttribute('data-theme', tg.colorScheme);
         }
       } else {
+        document.documentElement.classList.add('is-web');
+        document.documentElement.classList.remove('tg-mini-app', 'is-telegram');
         try {
           var s = localStorage.getItem('chaqir-theme');
           if (s === 'dark' || s === 'light') document.documentElement.setAttribute('data-theme', s);
         } catch (e) {}
       }
-    } catch (e) {}
+    } catch (e) {
+      document.documentElement.classList.add('is-web');
+    }
   })();
 </script>
+<style id="platform-ui">
+  /* Default = WEB: Telegram tugmalari yashirin */
+  [data-platform="telegram"],
+  .tg-share-btn,
+  .tg-trust-note { display: none !important; }
+
+  /* Telegram Mini App da TG UI */
+  html.is-telegram [data-platform="telegram"].btn,
+  html.is-telegram .tg-share-btn { display: flex !important; }
+  html.is-telegram [data-platform="telegram"]:not(.btn) { display: block !important; }
+  html.is-telegram .tg-trust-note { display: flex !important; }
+  html.is-telegram [data-platform="web"] { display: none !important; }
+
+  /* Web: faqat web tugmalar */
+  html:not(.is-telegram) [data-platform="web"].btn,
+  html.is-web [data-platform="web"].btn { display: flex !important; }
+  html:not(.is-telegram) [data-platform="web"]:not(.btn),
+  html.is-web [data-platform="web"]:not(.btn) { display: block !important; }
+</style>
+
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -277,9 +355,10 @@
           <div class="body text-measure-md">Mijozlar siz bilan bog'lanishi uchun raqamingiz kerak bo'ladi</div>
         </div>
         <div class="screen-fixed-bottom gap-12">
-          <button class="btn btn-primary tg-share-btn" onclick="sharePhone()"><span class="tg-icon-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span> Raqamni ulashish</button>
-          <div class="tg-trust-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Raqamingiz faqat mijozlarga ko'rinadi</div>
-          <button class="btn btn-text is-centered" onclick="go('manual-phone')">Qo'lda kiritish</button>
+          <button class="btn btn-primary tg-share-btn" data-platform="telegram" onclick="sharePhone()"><span class="tg-icon-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span> Telegram dan ulashish</button>
+          <div class="tg-trust-note" data-platform="telegram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Raqamingiz faqat mijozlarga ko'rinadi</div>
+          <button class="btn btn-primary" data-platform="web" onclick="go('manual-phone')">Raqamni kiritish</button>
+          <button class="btn btn-text is-centered" data-platform="telegram" onclick="go('manual-phone')">Qo'lda kiritish</button>
         </div>
       </section>
 
@@ -294,7 +373,8 @@
         <div class="screen-content gap-24 pt-24">
           <div class="gap-8">
             <div class="h1">Raqamni kiriting</div>
-            <div class="body">Telefon raqamingiz va (ixtiyoriy) parol — keyin brauzerdan ham kira olasiz</div>
+            <div class="body" data-platform="web">Telefon va parol kiriting (keyin shu bilan kirasiz)</div>
+            <div class="body" data-platform="telegram">Telefon raqam (parol ixtiyoriy — Telegram orqali ham kira olasiz)</div>
           </div>
           <div class="field field--float" id="field-manual-phone">
             <input class="input" type="tel" placeholder=" " id="manual-phone-field" inputmode="tel" autocomplete="tel" oninput="checkManualPhone()">
@@ -303,7 +383,7 @@
           </div>
           <div class="field field--float" id="field-reg-password">
             <input class="input" type="password" placeholder=" " id="reg-password-field" autocomplete="new-password" oninput="checkManualPhone()">
-            <label class="field-label" for="reg-password-field">Parol (ixtiyoriy)</label>
+            <label class="field-label" for="reg-password-field" id="reg-password-label">Parol</label>
             <div class="field-error" id="reg-password-error">Kamida 4 belgi</div>
           </div>
         </div>
@@ -345,13 +425,17 @@
         <div class="screen-content gap-24 pt-24">
           <div class="gap-8">
             <div class="h1">Xush kelibsiz!</div>
-            <div class="body">Davom etish uchun telefon raqamingizni ulashing</div>
+            <div class="body" data-platform="telegram">Telegram hisobingiz orqali kiring</div>
+            <div class="body" data-platform="web">Telefon raqam va parol bilan kiring</div>
           </div>
         </div>
         <div class="screen-fixed-bottom gap-12">
-          <button class="btn btn-primary tg-share-btn" onclick="loginShare()"><span class="tg-icon-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span> Raqamni ulashish</button>
-          <div class="tg-trust-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Raqamingiz faqat mijozlarga ko'rinadi</div>
-          <button class="btn btn-text is-centered" onclick="go('login-manual-phone')">Qo'lda kiritish</button>
+          <!-- Telegram: initData / contact -->
+          <button class="btn btn-primary tg-share-btn" data-platform="telegram" onclick="loginShare()"><span class="tg-icon-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span> Telegram orqali kirish</button>
+          <div class="tg-trust-note" data-platform="telegram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Telegram hisobingiz orqali xavfsiz kirish</div>
+          <!-- Web: telefon + parol -->
+          <button class="btn btn-primary" data-platform="web" onclick="go('login-manual-phone')">Telefon va parol bilan kirish</button>
+          <button class="btn btn-text is-centered" data-platform="telegram" onclick="go('login-manual-phone')">Parol bilan kirish</button>
         </div>
       </section>
 
