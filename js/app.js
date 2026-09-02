@@ -14,6 +14,7 @@
 // ------------------------------------------------------------
 let appState = {
   id: null,           // backend'dagi users.id — ro'yxatdan o'tgach/kirgach to'ladi
+  token: null,        // session token — localStorage'da ham saqlanadi (F5'dan keyin ham kirgan holatda qolish uchun)
   role: null,        // 'worker' | 'employer'
   name: '',
   skills: [],         // faqat worker uchun
@@ -296,7 +297,7 @@ function renderScreen(screenId, direction) {
 
 function cancelFlow() {
   // To'liq reset — ro'yxatdan o'tish jarayonidan chiqib ketish
-  appState = { id: null, role: null, name: '', skills: [], region: null, district: null, mahalla: null, address: '', phone: null, favorites: [] };
+  appState = { id: null, token: null, role: null, name: '', skills: [], region: null, district: null, mahalla: null, address: '', phone: null, favorites: [] };
   screenHistory = [];
   searchAttemptCount = 0; // demo error-simulyatsiya hisoblagichi ham tozalanadi
   renderScreen('onboarding', 'back'); // flow'dan chiqish
@@ -1187,6 +1188,8 @@ async function finishRegistration() {
       created = await ChaqirAPI.registerEmployer(payload);
     }
     appState.id = created.id;
+    appState.token = created.token || null;
+    setStoredToken(appState.token);
   } catch (e) {
     console.error('Ro\'yxatdan o\'tishda xatolik:', e);
     showToast(e.message || 'Ro\'yxatdan o\'tishda xatolik yuz berdi', 'error');
@@ -1496,8 +1499,15 @@ function renderOrderStatusBadge(status) {
   return `<span class="order-status-badge${isNew ? ' is-new' : ' is-done'}">${label}</span>`;
 }
 
-function logout() {
-  appState = { role: null, name: '', skills: [], region: null, district: null, mahalla: null, address: '', phone: null, favorites: [] };
+// MANTIQ: avval backend'dagi sessionni tugatamiz (POST /api/auth/logout),
+// keyin appState va localStorage'dagi tokenni tozalaymiz. Backend so'rovi
+// muvaffaqiyatsiz bo'lsa ham (masalan tarmoq yo'q) — foydalanuvchi baribir
+// mahalliy holatda "chiqqan" bo'lishi kerak, shuning uchun xato jim
+// e'tiborsiz qoldiriladi.
+async function logout() {
+  try { if (appState.token) await ChaqirAPI.logout(); } catch (e) { /* baribir chiqamiz */ }
+  setStoredToken(null);
+  appState = { id: null, token: null, role: null, name: '', skills: [], region: null, district: null, mahalla: null, address: '', phone: null, favorites: [] };
   searchFilterState = { skills: [], region: null, district: null };
   screenHistory = [];
   searchAttemptCount = 0; // demo error-simulyatsiya hisoblagichi ham tozalanadi
@@ -1974,6 +1984,7 @@ function openWorkerDetail() {
     });
     document.getElementById('worker-call-btn').style.display = 'none';
     document.getElementById('worker-message-btn').style.display = 'none';
+    document.getElementById('worker-order-btn').style.display = 'none';
     go('worker-detail');
     return;
   }
@@ -2009,6 +2020,12 @@ function openWorkerDetail() {
   document.getElementById('worker-call-btn').onclick = () => callWorker(worker);
   document.getElementById('worker-message-btn').onclick = () => messageWorker(worker);
   document.getElementById('worker-favorite-btn').onclick = () => toggleFavorite(worker);
+
+  // "So'rov yuborish" faqat employer uchun mantiqiy — worker o'ziga yoki
+  // boshqa workerga buyurtma bermaydi.
+  const orderBtn = document.getElementById('worker-order-btn');
+  orderBtn.style.display = appState.role === 'employer' ? '' : 'none';
+  orderBtn.onclick = () => openOrderSheet(worker);
   go('worker-detail');
 }
 
@@ -2124,12 +2141,27 @@ function callWorker(worker) {
 }
 
 // 2.12 — "Bog'lanish" tugmalarini kengaytirish: xabar yozish UI'si.
-// MANTIQ: to'liq chat-ekran hali roadmap'da alohida band emas
-// (bu band faqat tugma UI'sini talab qiladi), shuning uchun
-// callWorker() bilan bir xil MOCK-toast pattern qo'llanildi —
-// yangi, izchil bo'lmagan flow o'ylab topmadim.
-function messageWorker(worker) {
-  showToast(`Xabar yozish: ${worker.name} (tez orada)`, 'info');
+// MANTIQ: employer worker bilan suhbat boshlaydi — POST /api/conversations
+// orqali (agar ular orasida allaqachon suhbat bo'lsa, backend o'shani
+// qaytaradi, yangisi yaratilmaydi). Muvaffaqiyatli bo'lsa to'g'ridan-to'g'ri
+// chat oynasi ochiladi.
+async function messageWorker(worker) {
+  if (!appState.id) {
+    showToast('Xabar yozish uchun ro\'yxatdan o\'ting', 'info');
+    return;
+  }
+  try {
+    const { id } = await ChaqirAPI.createConversation(worker.id);
+    await refreshConversations(); // MOCK_CONVERSATIONS'ni yangilaydi
+    const conv = MOCK_CONVERSATIONS.find(c => c.id === id);
+    if (conv) {
+      currentChatConversation = conv;
+      go('chat-detail');
+    }
+  } catch (e) {
+    console.error('Suhbat ochishda xatolik:', e);
+    showToast('Suhbat ochilmadi, qayta urinib ko\'ring', 'error');
+  }
 }
 
 // ------------------------------------------------------------
@@ -2242,7 +2274,7 @@ function sendChatMessage() {
     return;
   }
 
-  ChaqirAPI.sendMessage(currentChatConversation.id, appState.id, text)
+  ChaqirAPI.sendMessage(currentChatConversation.id, text)
     .then(() => {
       msg.pending = false;
       if (currentScreen === 'chat-detail' && currentChatConversation) renderChat();
@@ -2616,12 +2648,44 @@ function getStartScreen() {
 // zumda tugaydi, shuning uchun foydalanuvchi uchun sezilarli kutish
 // bo'lmaydi — lekin agar backend ishlamayotgan bo'lsa, konsolga xato
 // chiqadi va ilova baribir (bo'sh ro'yxatlar bilan) ochiladi, sinmaydi.
+//
+// SESSIYANI TIKLASH: agar localStorage'da token bo'lsa (avval ro'yxatdan
+// o'tgan/kirgan foydalanuvchi F5 bosgan) — GET /api/auth/me chaqirilib,
+// muvaffaqiyatli bo'lsa onboarding umuman ko'rsatilmasdan to'g'ridan-
+// to'g'ri "home"ga o'tiladi. Token eskirgan/bekor bo'lsa (masalan
+// backend bazasi tozalangan) — apiRequest() uni avtomatik tozalaydi,
+// shu payt oddiy onboarding oqimi davom etadi.
 // ------------------------------------------------------------
+async function restoreSession() {
+  const token = getStoredToken();
+  if (!token) return false;
+  try {
+    const user = await ChaqirAPI.getMe();
+    appState.token = token;
+    appState.id = user.id;
+    appState.role = user.role;
+    appState.name = user.name;
+    appState.phone = user.phone;
+    appState.region = user.region;
+    appState.district = user.district;
+    appState.mahalla = user.mahalla;
+    appState.address = user.address;
+    return true;
+  } catch (e) {
+    return false; // apiRequest() 401'da tokenni allaqachon tozaladi
+  }
+}
+
 (async function boot() {
   initTelegramMiniApp();
   applyAbVariant();
   await loadInitialData();
-  renderScreen(getStartScreen());
+  const restored = await restoreSession();
+  if (restored) {
+    await goHome();
+  } else {
+    renderScreen(getStartScreen());
+  }
   // Telegram user ismi onboarding'dan oldin bo'lsa — state'ga
   applyTelegramUserDefaults();
 })();
