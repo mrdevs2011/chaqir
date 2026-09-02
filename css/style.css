@@ -1,0 +1,2558 @@
+/* ============================================================
+   CHAQIR — Design tokens
+   Telegram Mini App theme-uyg'un CSS custom properties.
+   Keyinchalik Telegram.WebApp.themeParams bilan almashtirish uchun
+   shu nomlash konventsiyasi ishlatilgan.
+============================================================ */
+/* ============================================================
+   ICON STROKE-WIDTH QOIDASI
+   Roadmap "5 xil stroke-width — besistem" deb belgilagan edi,
+   lekin tekshirilganda bu aslida icon o'lchamiga qarab optik
+   moslashtirilgan qasddan qilingan tizim ekani aniqlandi (kichik
+   icon'da yupqa chiziq ko'zga ko'rinmay qoladi shuning uchun
+   qalinlashtiriladi). Muammo tizimning o'zida emas — qoida
+   hech qayerda yozilmaganida edi. Yangi icon qo'shganda shu
+   jadvalga qarab tanlang, tasodifiy son yozmang:
+
+     icon o'lchami      stroke-width
+     14-17px            2.4   (juda kichik, maksimal aniqlik kerak)
+     18-19px            2.2   (kichik, aniq ko'rinishi uchun qalin)
+     20-24px (standart) 2     (default holat)
+     26px               1.8   (o'rtacha-katta)
+     36px+              1.6   (katta, nozik chiziq yetarli)
+     alohida urg'u      3     (masalan success checkmark)
+
+   TUZATISH (2-audit, hard-diagnostic): status-icon (ICONS obyekti,
+   js/app.js) 18px o'lchamda lekin stroke-width 2.4 ishlatgan edi —
+   jadval bo'yicha 18px = 2.2 bo'lishi kerak edi. Bu 1-auditda
+   noto'g'ri "mos" deb yozilgan xato edi. Endi kod jadvalga
+   moslashtirildi: 18px status-iconlar 2.2ga tushirildi.
+============================================================ */
+:root {
+  /* Brand */
+  --color-primary: #F2A93B;
+  --color-primary-dark: #D98F1F;
+  --color-primary-100: #FDF1DE;
+  /* A11y fix (Bo'lim 1.1 / 6 audit): --color-primary-dark (#D98F1F) light
+     rejimda MATN sifatida ishlatilganda (tab-item.active, feed-header-link,
+     skill-chip, order-status-badge) 2.38–2.66:1 kontrast beradi — WCAG AA
+     matn uchun 4.5:1 talab qiladi. Dark rejimda muammo yo'q edi (7.5–9.4:1),
+     shuning uchun faqat light qiymat almashtirildi. Yagona to'qroq rang
+     UCHALA fonda ham (oq surface, #FAFAFA bg, primary-100) 4.5:1+ beradi —
+     har bir joy uchun alohida rang tanlash shart bo'lmadi.
+     Dekorativ icon fonlarida (role-emoji, empty-state-emoji) --color-primary-dark
+     o'zi qoladi, chunki icon uchun WCAG talabi 3:1 (ular matn emas). */
+  --color-primary-text: #8A5A0E; /* light: 5.3–5.9:1 barcha fonlarda */
+  --color-text: #1A1F3D;
+  --color-text-muted: #6B7086;
+  --color-bg: #FAFAFA;
+  --color-surface: #FFFFFF;
+  --color-border: #ECEAE6;
+  --color-danger: #E2574C;
+  --color-success: #34A853;
+  --color-warning: #E0A030;
+  --color-info: #3D7FE0;
+
+  /* Toast har doim "teskari" fonda chiqadi — mavjud snackbar
+     konvensiyasi bo'yicha light/dark rejimdan qat'iy nazar bir xil
+     qorong'i chip bo'lib qoladi. AVVAL bu to'g'ridan-to'g'ri
+     var(--color-text)'ga bog'langan edi — bu light rejimda ishlagan
+     (chunki color-text qora edi), lekin dark rejimda color-text oqqa
+     aylanganda toast oq-fon+oq-matn bo'lib butunlay ko'rinmay
+     qolar edi. Shuning uchun mustaqil token qilindi. */
+  --color-inverse-surface: #1A1F3D;
+  --skeleton-highlight: #F5F3EF;
+
+  /* Brend rangi (--color-primary) ataylab HAR IKKI rejimda ham
+     bir xil to'q sariq bo'lib qoladi (logo/brend identifikatsiyasi
+     uchun). Bu degani — orange fon ustidagi matn/icon rangi HECH
+     QACHON --color-text'ga bog'lanmasligi kerak, chunki color-text
+     dark rejimda oqqa aylanadi va oq-fon+oq-matn kabi natija
+     berardi (xuddi toast bug'iga o'xshab). Shuning uchun orange
+     sirt uchun alohida, doim qorong'i qoladigan token: */
+  --color-on-primary: #1A1F3D;
+
+  /* Telegram-uyg'un aliaslar */
+  --tg-theme-bg-color: var(--color-bg);
+  --tg-theme-button-color: var(--color-primary);
+  --tg-theme-text-color: var(--color-text);
+
+  /* Typography */
+  /* Kirill/lotin aralash matn (1.2 roadmap punkti): bu 5 ta font ham
+     (San Francisco, Segoe UI, Roboto, va h.k. system-ui/sans-serif
+     fallback'lari) kirill alifbosini to'liq qo'llab-quvvatlaydi —
+     bular OS-darajasidagi tizim shriftlari, cheklangan glyph-to'plamli
+     web-font emas. Shuning uchun "tofu" (bo'sh kvadrat) yoki shrift
+     almashinishi xavfi yo'q, alohida fallback qo'shish shart emas. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+
+  /* Radius / shadow */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --shadow-card: 0 2px 12px rgba(26, 31, 61, 0.06);
+  --shadow-sheet: 0 -8px 30px rgba(26, 31, 61, 0.14);
+
+  /* Spacing — 8pt grid (4px yarim-qadam sifatida qo'shilgan,
+     chunki chip/gap kabi joylarda 4/6/10/14px kabi qiymatlar
+     dizaynda haqiqatan ishlatilgan — buni "toza 8pt" deb soxta
+     yaxlitlashdan ko'ra, mavjud qiymatlarni token qilib nomlash
+     to'g'riroq. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+
+  /* Matn container kengliklari — bo'lim markazlashgan matnlar
+     bir nechta ekranda takrorlanadi (onboarding/success/verify) */
+  --text-measure-sm: 240px;
+  --text-measure-md: 260px;
+
+  /* Type scale — mavjud font-size qiymatlar (h1/h2/body va boshqa
+     15+ joyda tarqoq holda ishlatilgan) tokenlashtirildi. Yangi son
+     o'ylab topilmadi — real qiymatlar nomlandi, shunda keyingi safar
+     "caption" yoki "overline" kerak bo'lsa qaysi bo'sh joy borligi
+     (masalan 11px, 18px, 20-25px oralig'i) ko'rinib turadi. */
+  --text-2xs: 10.5px;  /* tab-item label */
+  --text-xs: 12px;     /* detail-row-label, chip meta */
+  --text-sm: 13px;     /* role-sub, action-card-sub, worker-card-mahalla */
+  --text-base: 14px;   /* profile-row, btn-text, sheet-item body */
+  --text-md: 15px;     /* .body, selector-value, detail-row-value */
+  --text-lg: 16px;     /* .input, role-title, worker-card-name, action-card-title */
+  --text-xl: 17px;     /* topbar h2 */
+  --text-2xl: 19px;    /* .h2 */
+  --text-3xl: 22px;    /* avatar-placeholder harf */
+  --text-4xl: 26px;    /* .h1 */
+  --text-5xl: 30px;    /* avatar-photo, detail-avatar harf */
+}
+
+/* Butun sahifada scrollbar yashirish (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+/* Firefox uchun */
+html {
+    scrollbar-width: none;
+    -ms-overflow-style: none; /* IE va eski Edge */
+}
+
+/* ============================================================
+   DARK MODE
+   MANTIQ: faqat :root tokenlarini [data-theme="dark"] ostida
+   qayta belgilaymiz — pastdagi 900+ qatorlik CSS'ning birontasi
+   ham o'zgarmaydi, chunki hammasi var(--color-*) orqali yozilgan
+   (shu uchun 1.2/1.4'da tokenlashtirish oldindan qilingan edi).
+   Bitta muhim istisno bor edi — .toast avval to'g'ridan-to'g'ri
+   var(--color-text)'ga bog'langan bug, u --color-inverse-surface
+   token'iga chiqarilib oldindan tuzatildi (yuqoriga qarang).
+
+   Yoqilish usuli: <html data-theme="dark"> — theme-init.js
+   localStorage'dan o'qiydi, aks holda prefers-color-scheme'ga
+   qaraydi. Profil ekranidagi svitcher shu attributni almashtiradi.
+============================================================ */
+[data-theme="dark"] {
+  --color-primary: #F2A93B;       /* brend rangi ikkala rejimda ham bir xil qoladi */
+  --color-primary-dark: #F0AE4C;  /* dark bg'da matn/active holat sifatida ishlatilgani uchun bir оz yorqinlashtirildi, kontrast uchun */
+  --color-primary-100: #332714;   /* yorug' shaftoli fon endi issiq to'q qo'ng'ir tint — badge/icon doiralar uchun */
+  --color-primary-text-on-100: #F5B85C; /* 8.25:1 on dark --color-primary-100 */
+  --color-text: #F1F1F6;
+  --color-text-muted: #9A9EB4;
+  --color-bg: #14151D;
+  --color-surface: #1C1E29;
+  --color-border: #2B2E3D;
+  --color-danger: #FF6B60;
+  --color-success: #3DBE68;
+  --color-warning: #E8B84A;
+  --color-info: #5B9BF0;
+
+  /* --color-inverse-surface ataylab o'zgartirilmaydi — toast
+     ikkala rejimda ham bir xil to'q navy chip bo'lib qoladi. */
+
+  --skeleton-highlight: #33374A;
+
+  --shadow-card: 0 2px 14px rgba(0, 0, 0, 0.45);
+  --shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.55);
+}
+@media (prefers-color-scheme: dark) {
+  /* Foydalanuvchi hali qo'lda tanlamagan bo'lsa (localStorage bo'sh),
+     tizim sozlamasiga qarab avtomatik ishga tushadi. theme-init.js
+     buni faqat "saqlangan tanlov yo'q" holatidagina qo'llaydi. */
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --color-primary: #F2A93B;
+    --color-primary-dark: #F0AE4C;
+    --color-primary-100: #332714;
+    --color-primary-text-on-100: #F5B85C; /* 8.25:1 on dark --color-primary-100 */
+    --color-text: #F1F1F6;
+    --color-text-muted: #9A9EB4;
+    --color-bg: #14151D;
+    --color-surface: #1C1E29;
+    --color-border: #2B2E3D;
+    --color-danger: #FF6B60;
+    --color-success: #3DBE68;
+    --color-warning: #E8B84A;
+    --color-info: #5B9BF0;
+    --skeleton-highlight: #33374A;
+    --shadow-card: 0 2px 14px rgba(0, 0, 0, 0.45);
+    --shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.55);
+  }
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: #EDEAE3;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button { font-family: inherit; }
+
+/* ============================================================
+   Device frame (desktop preview only — mobilda kerak emas)
+============================================================ */
+.device-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 0;
+}
+.device {
+  position: relative;
+  width: 390px;
+  height: 780px;
+  max-height: 92vh;
+  background: var(--color-bg);
+  border-radius: 44px;
+  border: 7px solid #000;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.28);
+  overflow: hidden;
+}
+.device-notch {
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 120px; height: 26px;
+  background: #000;
+  border-radius: 0 0 16px 16px;
+  z-index: 50;
+}
+.screens-viewport {
+  position: relative;
+  width: 100%; height: 100%;
+  overflow: hidden;
+}
+
+@media (max-width: 430px) {
+  .device-shell { padding: 0; }
+  .device {
+    width: 100vw; height: 100vh; max-height: 100vh;
+    border: none; border-radius: 0;
+  }
+  .device-notch { display: none; }
+}
+
+/* Telegram Mini App — to'liq ekran (telefon frame o'chiriladi) */
+html.tg-mini-app,
+html.tg-mini-app body {
+  background: var(--color-bg);
+  overscroll-behavior: none;
+}
+html.tg-mini-app .device-shell {
+  padding: 0;
+  min-height: 100%;
+  min-height: 100dvh;
+  align-items: stretch;
+  justify-content: stretch;
+}
+html.tg-mini-app .device {
+  width: 100%;
+  max-width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+html.tg-mini-app .device-notch { display: none; }
+
+/* ============================================================
+   Screens
+============================================================ */
+.screen {
+  display: none;
+  position: absolute;
+  inset: 0;
+  flex-direction: column;
+  background: var(--color-bg);
+  overflow-y: auto;
+  height: 100%;
+  padding-top: env(safe-area-inset-top, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+}
+.screen.active {
+  display: flex;
+}
+/* 3.1 roadmap punkti: yo'nalishga qarab 3 xil kirish animatsiyasi.
+   MANTIQ — bu telefon UI'larida (iOS/Android/Telegram) tanish til:
+     forward — chuqurlashish: yangi ekran O'NGDAN chapga suriladi
+               ("ichkariga kirayapsan" hissi — masalan Bosh sahifa
+               -> Ishchi profili)
+     back    — yuzaga chiqish: ekran CHAPDAN o'ngga suriladi, forward'ning
+               aynan ko'zgudagi aksi (bir xil yo'l, teskari yo'nalish —
+               foydalanuvchi miyasi buni "men qaytyapman" deb o'qiydi)
+     fade    — lateral (tab-bar): chapga/o'ngga surilish YO'Q, chunki
+               tablar bir xil ierarxiya darajasida — "Xabarlar"dan
+               "Profil"ga o'tish chuqurlashish emas, joy almashish */
+.screen.active.dir-forward {
+  animation: screen-in-forward 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.screen.active.dir-back {
+  animation: screen-in-back 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.screen.active.dir-fade {
+  animation: screen-in-fade 0.22s ease-out;
+}
+@keyframes screen-in-forward {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes screen-in-back {
+  from { opacity: 0; transform: translateX(-16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes screen-in-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .screen.active.dir-forward,
+  .screen.active.dir-back,
+  .screen.active.dir-fade { animation: none; }
+}
+/* Edge swipe-back (3.2): drag paytida CSS transition yo'q — barmoq
+   harakati 1:1 kuzatilishi kerak, JS to'g'ridan-to'g'ri transform
+   qo'yadi. Qo'yib yuborilgach JS o'zi transition qaytaradi. */
+.screen.is-swipe-dragging { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .screen.is-swipe-dragging { transform: none !important; }
+}
+
+.screen-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 20px calc(24px + env(safe-area-inset-bottom, 0));
+  overflow-y: auto;
+}
+.center-col { 
+  align-items: center; 
+}
+.center-col.justify-center { 
+  justify-content: center;
+  flex: 1;
+}
+/* padding-top variantlari — HTML'da 7 xil joyda inline
+   `style="padding-top:NNpx"` sifatida takrorlangan edi.
+   Nomlash spacing token'ga to'g'ridan-to'g'ri mos keladi. */
+.pt-8  { padding-top: var(--space-2); }
+.pt-12 { padding-top: var(--space-3); }
+.pt-16 { padding-top: var(--space-4); }
+.pt-24 { padding-top: var(--space-6); }
+.pt-32 { padding-top: var(--space-7); }
+.pt-48 { padding-top: var(--space-8); }
+
+/* Markazlashgan matn blok kengligi — onboarding/success/verify
+   ekranlarida body matni tekst juda uzun qatorga cho'zilmasligi
+   uchun ishlatiladi. */
+.text-measure-sm { max-width: var(--text-measure-sm); text-align: center; }
+.text-measure-md { max-width: var(--text-measure-md); text-align: center; }
+
+/* btn-text'ni o'z konteyneridan markazga chiqarish (default'da
+   flex item sifatida chapga yopishadi) */
+.btn-text.is-centered { align-self: center; }
+
+.screen-fixed-bottom {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px calc(24px + env(safe-area-inset-bottom, 0));
+  background: linear-gradient(180deg, rgba(250,250,250,0) 0%, var(--color-bg) 30%);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Bottom tab bar (Uzum Market uslubidagi asosiy navigatsiya)
+   MANTIQ: bu 5 ta tab appState.role'dan MUSTAQIL — har doim bir
+   xil ko'rinadi. Screen ichida bo'lgani uchun scroll/height bilan
+   muammo bo'lmasligi uchun flex-shrink:0 va sticky emas, screen
+   flex-column'ining oxirgi elementi sifatida joylashtirilgan.
+============================================================ */
+.tab-bar {
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 2px 8px;
+  min-width: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, transform 0.1s ease;
+}
+.tab-item:active { transform: scale(0.94); }
+.tab-item svg { width: 22px; height: 22px; transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1); }
+.tab-item span {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  width: 100%;
+  max-width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 5.1 — iPhone SE (360-375px) va undan tor ekranlarda 5 ta tab
+   (employer roli: Bosh sahifa/Qidiruv/Saqlangan/Xabarlar/Profil)
+   label'lari torayib, harf kesilishiga yaqin qolar edi. `min-width:0`
+   flex item'ning matn tufayli kengayib ketishini oldini oladi,
+   `text-overflow:ellipsis` esa haqiqatda sig'may qolsa (masalan
+   OS-darajasidagi katta font-size yoqilganda) so'z o'rtadan
+   kesilmasdan "..." bilan tugashini kafolatlaydi — 6-bo'limdagi
+   "katta font-size'da layout buzilmasligi" bandiga ham mos tayyorgarlik. */
+@media (max-width: 375px) {
+  .tab-item span { font-size: 10px; }
+}
+.tab-item.active { color: var(--color-primary-dark); }
+.tab-item.active svg { transform: translateY(-1px); }
+
+/* ============================================================
+   Utility gap stacks
+============================================================ */
+.gap-4 { display: flex; flex-direction: column; gap: 4px; }
+.gap-8 { display: flex; flex-direction: column; gap: 8px; }
+.gap-12 { display: flex; flex-direction: column; gap: 12px; }
+.gap-14 { display: flex; flex-direction: column; gap: 16px; }
+.gap-16 { display: flex; flex-direction: column; gap: 16px; }
+.gap-20 { display: flex; flex-direction: column; gap: 20px; }
+.gap-24 { display: flex; flex-direction: column; gap: 24px; }
+.items-center { 
+  align-items: center; 
+  text-align: center; 
+}
+
+/* ============================================================
+   Topbar
+============================================================ */
+.topbar {
+  display: flex;
+  align-items: center;
+  padding: 16px 12px 0;
+  min-height: 44px;
+  flex-shrink: 0;
+  transition: box-shadow 0.15s ease; /* 3.5: shadow paydo bo'lishi silliq, sakramasin */
+}
+.topbar h2 {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.spacer { flex: 1; }
+/* 3.5 roadmap punkti: scroll qilinganda topbar content'dan ajralib
+   turishi uchun subtle shadow. JS (`initTopbarScrollShadow`)
+   `.screen-content.scrollTop > 4px` bo'lganda shu classni qo'shadi.
+   box-shadow (border emas) tanlandi — chunki topbar balandligi
+   ekrandan-ekranga farq qiladi (ba'zisida sarlavha bor, ba'zisida
+   yo'q), border qo'shsa layout siljib ketardi, shadow esa joy
+   egallamaydi. */
+.topbar.has-shadow {
+  box-shadow: 0 4px 10px -6px color-mix(in srgb, var(--color-text) 22%, transparent);
+  position: relative;
+  z-index: 2; /* screen-content ustida chizilishi kerak */
+}
+.icon-btn {
+  /* A11y (Bo'lim 6, 5-band): minimal tap-target 44x44px (WCAG 2.5.5 / Apple HIG).
+     Vizual ko'rinish (ikon o'zi) 24x24 bo'lib qoladi, lekin bosish maydoni
+     kengaydi — bu ayniqsa "orqaga" tugmasi uchun muhim, chunki u ekranning
+     eng ko'p bosiladigan elementlaridan biri. */
+  width: 44px; height: 44px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.1s ease; /* 3.4: press-effekt konsistentligi */
+}
+.icon-btn:active { background: var(--color-border); }
+
+/* Ishchi profili — avatar tepasidagi "saqlash" (yurak) tugmasi */
+.worker-detail-header {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+}
+.favorite-btn {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  /* A11y (Bo'lim 6 qattiq audit): 40→44px minimal tap-target */
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: 50%;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.12s ease;
+}
+.favorite-btn svg { width: 20px; height: 20px; }
+.favorite-btn:active { transform: scale(0.92); }
+.favorite-btn.is-active {
+  background: rgba(226, 87, 76, 0.12);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+.favorite-btn.is-active svg { fill: currentColor; }
+/* 8.1 — Optimistic UI: saqlash bosilganda darhol "pop" */
+.favorite-btn.is-optimistic-pop {
+  animation: optimistic-pop 0.38s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+@keyframes optimistic-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .favorite-btn.is-optimistic-pop { animation: none; }
+}
+.cancel-link {
+  background: none; border: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  padding: 8px;
+  cursor: pointer;
+}
+
+/* ============================================================
+   Progress steps
+============================================================ */
+.progress-steps {
+  display: flex;
+  gap: 8px;
+  padding: 16px 20px 0;
+  flex-shrink: 0;
+}
+/* 3.3 roadmap punkti: eski holat — har ekranda konteyner
+   innerHTML='' bilan butunlay qayta yaratilardi, shuning uchun
+   dot.active class bilan TUG'ILARDI (avvalgi holati yo'q edi),
+   CSS transition hech qachon ishga tushmasdi — vizual jihatdan
+   statik, "sakrab" paydo bo'lardi. Endi ikki qatlamli struktura:
+   .progress-dot — statik fon rangi (bo'sh yo'l), ichidagi
+   .progress-dot-fill — width orqali to'ldiriladigan qatlam.
+   Yangi dot yaratilganda fill 0 width bilan boshlanadi, KEYIN
+   (requestAnimationFrame orqali, bir frame keyin) kerakli holatga
+   o'tadi — shu "ikki frame farqi" CSS transition'ni ishga
+   tushiradi (brauzer "boshlang'ich holat -> yangi holat"ni ko'radi). */
+.progress-dot {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+.progress-dot-fill {
+  position: absolute;
+  inset: 0;
+  width: 0%;
+  border-radius: 2px;
+  background: var(--color-border);
+  transition: width 0.32s cubic-bezier(0.22, 1, 0.36, 1), background 0.32s ease;
+}
+.progress-dot.done .progress-dot-fill { width: 100%; background: var(--color-primary-dark); }
+.progress-dot.active .progress-dot-fill { width: 100%; background: var(--color-primary); }
+@media (prefers-reduced-motion: reduce) {
+  .progress-dot-fill { transition: none; }
+}
+
+/* ============================================================
+   Typography
+============================================================ */
+.h1 { font-size: var(--text-4xl); font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; }
+.h2 { font-size: var(--text-2xl); font-weight: 600; line-height: 1.3; letter-spacing: -0.005em; } /* line-height qo'shildi — h1'da bor edi, h2'da yo'q edi (1.2 roadmap punkti) */
+.body { font-size: var(--text-md); line-height: 1.5; letter-spacing: 0.005em; color: var(--color-text-muted); } /* 15px matnda uzun qatorlarda harflar biroz zichroq ko'rinadi — 0.005em bilan nafas beriladi, h1/h2dagi manfiy spacing'dan farqli, chunki kichik matnda musbat tomonga siljitish o'qishni yengillashtiradi */
+.caption { font-size: var(--text-xs); line-height: 1.4; letter-spacing: 0.01em; color: var(--color-text-muted); } /* 1.2 audit paytida token darajasida borligi aniqlangan --text-xs uchun semantik klass — kichik matnda letter-spacing kattaroq, chunki kichik shriftda harflar yaqinlashib ketadi */
+
+/* ============================================================
+   Logo badge (start screen)
+============================================================ */
+.logo-badge {
+  width: 92px; height: 92px;
+  border-radius: 26px;
+  background: var(--color-primary-100);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.logo-badge svg { width: 44px; height: 44px; }
+.logo-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+/* Rasmiy brand logo (bg olib tashlangan PNG — circle kesilmagan) */
+.logo-badge--brand {
+  background: #0B1220;
+  padding: 12px;
+  border-radius: 28px;
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+.logo-badge--brand img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+/* Hero variant — onboarding */
+.logo-badge--hero {
+  width: 120px; height: 120px;
+  border-radius: 28px;
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+.logo-badge--hero svg { width: 64px; height: 64px; }
+.logo-badge--hero.logo-badge--brand {
+  padding: 14px;
+  border-radius: 32px;
+}
+/* Kichikroq variant — telefon-ulashish ekranida logo o'rniga
+   ishlatiladi, asosiy badge bilan bir xil vizual til, kichikroq
+   o'lcham. */
+.logo-badge.is-sm { width: 76px; height: 76px; border-radius: var(--radius-md); }
+
+/* 2.1 + 7 — Logo entrance + brand story (faqat onboarding) */
+.screen[data-screen="onboarding"] .logo-badge {
+  animation: logo-enter 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+.screen[data-screen="onboarding"] .h1 {
+  animation: logo-enter 0.55s 0.1s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+.screen[data-screen="onboarding"] .onboarding-tagline {
+  animation: logo-enter 0.55s 0.16s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+.screen[data-screen="onboarding"] .onboarding-story-text {
+  animation: logo-enter 0.55s 0.24s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+  max-width: 280px;
+  margin: 0 auto;
+  line-height: 1.45;
+}
+@keyframes logo-enter {
+  from { opacity: 0; transform: scale(0.72); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .screen[data-screen="onboarding"] .logo-badge,
+  .screen[data-screen="onboarding"] .h1,
+  .screen[data-screen="onboarding"] .onboarding-tagline,
+  .screen[data-screen="onboarding"] .onboarding-story-text {
+    animation: none;
+  }
+}
+
+/* 2.1 — Onboarding background: radial glow + soft gradient + dot pattern */
+.screen[data-screen="onboarding"] {
+  background:
+    radial-gradient(ellipse 120% 70% at 50% -10%,
+      color-mix(in srgb, var(--color-primary-100) 85%, transparent),
+      transparent 65%),
+    linear-gradient(180deg, var(--color-primary-100) 0%, var(--color-bg) 42%);
+  position: relative;
+}
+.screen[data-screen="onboarding"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-primary) 10%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+  pointer-events: none;
+  opacity: 0.85;
+  z-index: 0;
+}
+.screen[data-screen="onboarding"] > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================================
+   Buttons
+============================================================ */
+.btn {
+  min-height: 50px;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.2s ease,
+              background 0.15s ease,
+              box-shadow 0.15s ease;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-primary) 38%, transparent);
+}
+.btn-primary:active { background: var(--color-primary-dark); box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 28%, transparent); }
+/* Secondary — ghostroq: border yumshoqroq, matn muted, elevation yo'q (primary ustunligi) */
+.btn-secondary {
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1.5px solid transparent;
+  font-weight: 500;
+}
+.btn-secondary:active { background: color-mix(in srgb, var(--color-text) 6%, transparent); color: var(--color-text); }
+
+/* 2.12 — "Bog'lanish" tugmalarini kengaytirish: qo'ng'iroq +
+   xabar yozish yonma-yon. MANTIQ: `.screen-fixed-bottom` default
+   column bo'lgani uchun (onboarding uchun), bu yerga faqat shu
+   ekranga xos row-wrapper qo'shildi — global layout o'zgarmadi. */
+.worker-detail-actions {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.worker-detail-actions .btn:not(.btn-icon-square) { flex: 1; }
+.btn-icon-square {
+  flex: 0 0 auto;
+  width: 52px;
+  padding: 0;
+  border: 1.5px solid var(--color-border);
+}
+.btn-icon-square:active { background: color-mix(in srgb, var(--color-text) 6%, transparent); }
+
+/* Onboarding pastki tugmalar orasidagi vertikal bo'shliqni qisqartirish — CTA yaqinroq */
+.screen[data-screen="onboarding"] .screen-fixed-bottom.gap-12 {
+  gap: 8px;
+}
+.btn-text { background: none; color: var(--color-text-muted); font-weight: 500; font-size: var(--text-base); min-height: auto; padding: 8px; }
+.btn.is-disabled { opacity: 0.4; pointer-events: none; }
+
+/* ============================================================
+   Role select cards
+   2.2 — check badge, bounce, illustrative patterns
+============================================================ */
+.role-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  padding-right: 44px; /* check badge uchun joy */
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+              background 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.12s ease,
+              box-shadow 0.2s ease;
+}
+.role-card:active { transform: scale(0.98); }
+.role-card.selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-100);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+
+/* 2.2 — Check-mark badge (yuqori o'ng burchak) */
+.role-card::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  opacity: 0;
+  transform: scale(0.55);
+  transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.34, 1.4, 0.64, 1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+  background-size: 14px 14px;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 2;
+}
+.role-card.selected::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* 2.2 — Selection bounce */
+.role-card.is-bouncing {
+  animation: role-bounce 0.38s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+@keyframes role-bounce {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(0.96); }
+  60%  { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .role-card.is-bouncing { animation: none; }
+  .role-card::after { transition: none; }
+}
+
+/* 2.2 — Illustrative background patterns */
+.role-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.4;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 0;
+}
+.role-card.selected::before { opacity: 0.65; }
+
+/* Worker: diagonal hatch + dots */
+#role-worker::before {
+  background-image:
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 7px,
+      color-mix(in srgb, var(--color-primary) 9%, transparent) 7px,
+      color-mix(in srgb, var(--color-primary) 9%, transparent) 8px
+    ),
+    radial-gradient(circle at 18% 28%, color-mix(in srgb, var(--color-primary) 14%, transparent) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 72% 62%, color-mix(in srgb, var(--color-primary) 11%, transparent) 1.5px, transparent 1.5px);
+  background-size: auto, 22px 22px, 30px 30px;
+}
+/* Employer/seeker: concentric rings (radar) + dots */
+#role-employer::before {
+  background-image:
+    radial-gradient(circle at 82% 22%, transparent 16px, color-mix(in srgb, var(--color-primary) 11%, transparent) 16px, color-mix(in srgb, var(--color-primary) 11%, transparent) 17px, transparent 17px),
+    radial-gradient(circle at 82% 22%, transparent 28px, color-mix(in srgb, var(--color-primary) 8%, transparent) 28px, color-mix(in srgb, var(--color-primary) 8%, transparent) 29px, transparent 29px),
+    radial-gradient(circle at 22% 70%, color-mix(in srgb, var(--color-primary) 12%, transparent) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 48% 48%, color-mix(in srgb, var(--color-primary) 9%, transparent) 1.5px, transparent 1.5px);
+  background-size: auto, auto, 26px 26px, 34px 34px;
+}
+
+.role-emoji {
+  width: 48px; height: 48px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-100);
+  color: var(--color-primary-dark);
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s ease, color 0.2s ease;
+  position: relative;
+  z-index: 1;
+}
+.role-card.selected .role-emoji { background: var(--color-primary); color: var(--color-on-primary); }
+.role-text { display: flex; flex-direction: column; gap: 2px; position: relative; z-index: 1; }
+.role-title { font-size: var(--text-lg); font-weight: 600; }
+.role-sub { font-size: var(--text-sm); color: var(--color-text-muted); }
+
+/* ============================================================
+   Fields / inputs
+   2.3 — floating label, error+shake, char counter
+============================================================ */
+.field { display: flex; flex-direction: column; gap: 8px; }
+
+/* Oddiy (eski) label — float bo'lmagan joylar uchun saqlanadi */
+.field:not(.field--float) .field-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.input {
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: var(--text-lg);
+  color: var(--color-text);
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  font-family: inherit;
+}
+.input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 4px var(--color-primary-100); }
+.input[type="tel"] { font-variant-numeric: tabular-nums; }
+
+/* --- Floating label --- */
+.field--float {
+  position: relative;
+  gap: 0;
+}
+.field--float .input {
+  min-height: 56px;
+  padding: 16px 16px 8px;
+}
+.field--float .field-label {
+  position: absolute;
+  left: 16px;
+  top: 28px;
+  transform: translateY(-50%);
+  font-size: var(--text-lg);
+  font-weight: 400;
+  color: var(--color-text-muted);
+  pointer-events: none;
+  transition: top 0.18s ease, transform 0.18s ease, font-size 0.18s ease, color 0.18s ease;
+  background: transparent;
+  margin: 0;
+  line-height: 1;
+}
+/* Focus yoki qiymat borida label yuqoriga ko'tariladi */
+.field--float .input:focus + .field-label,
+.field--float .input:not(:placeholder-shown) + .field-label {
+  top: 10px;
+  transform: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* --- Error + shake --- */
+.field.has-error .input {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-danger) 14%, transparent);
+  animation: field-shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+@keyframes field-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px); }
+  30% { transform: translateX(5px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(3px); }
+  75% { transform: translateX(-2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .field.has-error .input { animation: none; }
+}
+.field-error {
+  display: none;
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+  margin-top: 8px;
+  padding-left: 2px;
+  align-items: center;
+  gap: 4px;
+}
+.field.has-error .field-error { display: flex; }
+
+/* --- Character counter --- */
+.char-counter {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-align: right;
+  margin-top: 8px;
+  padding-right: 2px;
+}
+.char-counter.near { color: var(--color-warning); }
+.char-counter.full { color: var(--color-danger); font-weight: 600; }
+
+/* 2.3 — Keyboard layout: visualViewport height sync */
+:root { --vvh: 100dvh; }
+.device {
+  /* max-height visualViewport bilan sinxron (JS o'rnatadi) */
+  max-height: var(--vvh, 100dvh);
+}
+@supports (height: 100dvh) {
+  .device { height: min(844px, var(--vvh, 100dvh)); }
+}
+
+/* ============================================================
+   Skill chips
+   2.4 — checkmark micro-anim, fade-edge, count badge
+============================================================ */
+.chip-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.chip {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 16px;
+  border-radius: 14px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: background 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+              color 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.12s ease;
+}
+.chip svg { flex-shrink: 0; transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1); }
+.chip:active { transform: scale(0.96); }
+.chip.selected {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 600;
+}
+.chip.selected svg { transform: scale(1.08); }
+
+/* 2.4 — Checkmark badge inside chip */
+.chip-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-on-primary);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.34, 1.4, 0.64, 1);
+  pointer-events: none;
+}
+.chip-check svg {
+  width: 12px;
+  height: 12px;
+  transform: none !important;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.8;
+}
+.chip.selected .chip-check {
+  opacity: 1;
+  transform: scale(1);
+}
+.chip.is-pop {
+  animation: chip-pop 0.32s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+@keyframes chip-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.94); }
+  70%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chip.is-pop { animation: none; }
+  .chip-check { transition: none; }
+}
+
+/* Skill grid variant — 2 ustunli, kvadrat kartalar (onboarding) */
+.chip-group-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.chip-group-grid .chip {
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 16px;
+  padding: 16px;
+  text-align: center;
+}
+.chip-group-grid .chip svg {
+  width: 28px;
+  height: 28px;
+}
+.chip-group-grid .chip span {
+  font-size: var(--text-base);
+}
+
+/* 2.4 — Scroll wrap + fade-edge */
+.chip-scroll-wrap {
+  position: relative;
+  max-height: min(420px, 52vh);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -4px;
+  padding: 0 4px 8px;
+}
+.chip-scroll-wrap::after {
+  content: '';
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: block;
+  height: 28px;
+  margin-top: -28px;
+  background: linear-gradient(180deg, transparent, var(--color-bg));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 2;
+}
+.chip-scroll-wrap.has-overflow::after {
+  opacity: 1;
+}
+.chip-scroll-wrap.is-scrolled-end::after {
+  opacity: 0;
+}
+
+/* 2.4 — Selected count badge */
+.skills-subtitle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.skills-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.skills-count-badge.hidden { display: none; }
+
+/* 2.10 — Filtrni tozalash havolasi (search-filters topbar) */
+.filter-reset-link.hidden { display: none; }
+
+/* 2.10 — Natija sonini preview matni ("~12 ta ishchi topiladi") */
+.filter-preview-text {
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+  min-height: 16px;
+}
+
+/* ============================================================
+   Region selectors + bottom sheet
+============================================================ */
+.region-group { display: flex; flex-direction: column; gap: 8px; }
+.selector {
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
+}
+.selector:active { transform: scale(0.99); }
+.selector-value { font-size: var(--text-md); }
+.selector.filled { color: var(--color-text); border-color: var(--color-text); }
+.selector.filled .selector-value { font-weight: 600; }
+.selector.disabled { opacity: 0.45; pointer-events: none; }
+.selector svg { flex-shrink: 0; }
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(26,31,61,0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, backdrop-filter 0.25s ease;
+  z-index: 90;
+  /* 2.5 — blur (fallback: faqat qorong'ilashish) */
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+}
+.sheet-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.sheet {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  max-height: 70%;
+  background: var(--color-surface);
+  border-radius: 22px 22px 0 0;
+  box-shadow: var(--shadow-sheet);
+  transform: translateY(100%);
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  touch-action: none; /* drag uchun */
+}
+.sheet.open { transform: translateY(0); }
+.sheet.is-dragging { transition: none; }
+.sheet-handle {
+  width: 36px; height: 4px;
+  background: var(--color-border);
+  border-radius: 2px;
+  margin: 8px auto 4px;
+  flex-shrink: 0;
+  cursor: grab;
+}
+.sheet-header {
+  padding: 8px 20px 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.sheet-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 0 16px;
+  min-height: 44px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  position: relative;
+}
+.sheet-search input {
+  border: none;
+  background: none;
+  outline: none;
+  font-size: var(--text-md);
+  flex: 1;
+  color: var(--color-text);
+  font-family: inherit;
+  min-width: 0;
+}
+/* 8.2 — Debounce typing indikatori */
+.sheet-search-typing {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sheet-search.is-typing .sheet-search-typing { display: flex; }
+.sheet-search.is-typing .sheet-search-icon { opacity: 0.35; }
+.sheet-list { overflow-y: auto; padding: 8px 8px 16px; touch-action: pan-y; }
+.sheet-item {
+  padding: 16px 12px;
+  font-size: var(--text-md);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.12s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sheet-item:active { background: var(--color-bg); }
+.sheet-item.is-selected {
+  background: var(--color-primary-100);
+  color: var(--color-text);
+  font-weight: 600;
+}
+.sheet-item-check {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.sheet-item.is-selected .sheet-item-check { display: flex; }
+.sheet-item-check svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.8;
+}
+.sheet-item-label mark {
+  background: color-mix(in srgb, var(--color-primary) 28%, transparent);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+  font-weight: 700;
+}
+.sheet-empty {
+  padding: 36px 16px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.sheet-empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sheet-empty-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+}
+
+/* ============================================================
+   Phone share
+   — Telegram native ulashish tugmasi: oddiy primary-btn'dan farqli,
+     ichidagi ikonka o'z alohida "chip" fonida ajratiladi (Telegram'ning
+     o'z tizim tugmalarida ko'p ishlatiladigan pattern — foydalanuvchi
+     buni "app ichidagi forma" emas, "Telegram bilan gaplashyapman"
+     deb o'qishi kerak). Trust-note esa xavotirni ("nega raqamimni
+     so'rayapti") ulashish tugmasidan OLDIN emas, PASTIDA, kichik va
+     jim ko'rinishda beriladi — ortiqcha vazn qo'shmaydi.
+============================================================ */
+.tg-share-btn {
+  background: var(--color-primary);
+  position: relative;
+  gap: 8px;
+}
+.tg-share-btn .tg-icon-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.22);
+  flex-shrink: 0;
+}
+.tg-share-btn .tg-icon-chip svg {
+  width: 13px;
+  height: 13px;
+}
+.tg-trust-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: var(--text-2xs);
+  line-height: 1.4;
+  text-align: center;
+}
+.tg-trust-note svg {
+  width: 13px;
+  height: 13px;
+  stroke: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Success screen
+============================================================ */
+.success-circle {
+  width: 92px; height: 92px;
+  border-radius: 50%;
+  background: var(--color-primary-100);
+  display: flex; align-items: center; justify-content: center;
+}
+/* ------------------------------------------------------------
+   2.7 — Success circle pulse/glow effekti
+   Glow checkmark chizilib bo'lgach boshlanadi (0.5s kechikish —
+   draw-in 0.15s+0.45s=0.6s da tugaydi, glow undan sal oldinroq
+   "kutib turgandek" boshlanmasin uchun ~0.5s qilindi, deyarli
+   bir vaqtda lekin checkmark ustunligi saqlanadi). 2 marta pulse
+   qiladi-da to'xtaydi (infinite emas — success ekran doim ochiq
+   turadigan joy emas, cheksiz pulse ko'zni charchatadi va
+   battery/CPU'ni bekorga ishlatadi). color-mix ishlatildi — token
+   qiymati o'zgarsa (light/dark) glow rangi avtomatik moslashadi,
+   qattiq rgba() yozilmadi.
+------------------------------------------------------------ */
+.success-circle-inner {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: var(--color-success);
+  display: flex; align-items: center; justify-content: center;
+  animation: success-glow-pulse 1.1s ease-out 0.5s 2;
+}
+@keyframes success-glow-pulse {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-success) 55%, transparent); }
+  70%  { box-shadow: 0 0 0 22px color-mix(in srgb, var(--color-success) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-success) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .success-circle-inner { animation: none; }
+}
+
+/* ------------------------------------------------------------
+   2.7 — Check-mark draw-in animatsiya
+   Path uzunligi (M20 6L9 17l-5-5, ikki segment) matematik hisoblab
+   chiqarilgan: sqrt(11²+11²) + sqrt(5²+5²) ≈ 22.63px. dasharray 24
+   qilib olindi (kichik zaxira bilan — aniq 22.63 qilsak, ba'zi
+   brauzer subpixel rendering'ida oxirgi uchi kesilib qolishi
+   mumkin). Dashoffset 24'dan 0'ga tushib, chiziq "chizilib
+   borayotgandek" ko'rinadi. 0.15s kechikish bilan boshlanadi —
+   success-circle ekranga kirib bo'lgach ishga tushsin, bir vaqtda
+   "sakrab" ko'rinmasin degan maqsadda (screen-in-forward/back 0.28s
+   bilan vizual ketma-ketlik hosil qiladi).
+------------------------------------------------------------ */
+.success-check-path {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: check-draw-in 0.45s 0.15s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+@keyframes check-draw-in {
+  to { stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .success-check-path {
+    animation-duration: 0.01s;
+    animation-delay: 0s;
+  }
+}
+
+/* ------------------------------------------------------------
+   2.7 — Confetti/particle animatsiya
+   Tarkib JS'da fireConfetti() orqali dinamik generatsiya qilinadi
+   (chaqir-app/js/app.js). Toza CSS-only qilib bo'lmaydi, chunki
+   har bir zarrachaning boshlang'ich pozitsiyasi, rangi va vaqt
+   kechikishi tasodifiy bo'lishi kerak — shuning uchun bazaviy
+   animatsiya (tushish + aylanish + so'nish) shu yerda ta'riflanadi,
+   tasodifiylikni JS inline style orqali beradi (--x, --delay, --dur).
+   prefers-reduced-motion: reduce bo'lsa, fireConfetti() umuman
+   zarracha yaratmaydi (JS darajasida tekshiriladi) — shuning uchun
+   bu yerda alohida reduced-motion qoidasi shart emas.
+------------------------------------------------------------ */
+.confetti-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 5;
+}
+.confetti-piece {
+  position: absolute;
+  top: -12px;
+  left: var(--x);
+  width: var(--size, 8px);
+  height: var(--size, 8px);
+  background: var(--piece-color);
+  border-radius: 2px;
+  opacity: 0;
+  animation: confetti-fall var(--dur, 2.4s) var(--delay, 0s) ease-in forwards;
+}
+.confetti-piece.is-round { border-radius: 50%; }
+@keyframes confetti-fall {
+  0%   { opacity: 0; transform: translateY(0) rotate(0deg); }
+  8%   { opacity: 1; }
+  100% { opacity: 0; transform: translateY(var(--fall-distance, 520px)) rotate(var(--spin, 380deg)); }
+}
+
+/* ============================================================
+   Home / menu
+============================================================ */
+.user-header { display: flex; align-items: center; gap: 16px; }
+.avatar-placeholder {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.role-tag {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  background: var(--color-border);
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 100px;
+  width: fit-content;
+}
+
+.action-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.15s ease;
+}
+.action-card:active { transform: scale(0.98); box-shadow: none; }
+.action-card-emoji {
+  width: 48px; height: 48px;
+  background: rgba(255,255,255,0.5);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-on-primary);
+}
+.action-card-title { font-size: var(--text-lg); font-weight: 700; }
+.action-card-sub { font-size: var(--text-sm); color: rgba(26,31,61,0.65); }
+.action-card-arrow { margin-left: auto; flex-shrink: 0; }
+
+.info-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.info-card-emoji {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(52, 168, 83, 0.12);
+  color: var(--color-success);
+  display: flex; align-items: center; justify-content: center;
+}
+
+.menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 4px;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  font-size: var(--text-md);
+  font-weight: 500;
+}
+.menu-row:last-child { border-bottom: none; }
+.menu-row svg { color: var(--color-text-muted); }
+
+/* ============================================================
+   Worker cards (search results)
+============================================================ */
+.worker-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.15s ease,
+              box-shadow 0.15s ease;
+}
+.worker-card:active {
+  transform: scale(0.98);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-card);
+}
+/* 2.11 — Natijalar ro'yxatiga stagger-animatsiya kirish. MANTIQ:
+   xuddi 2.9'dagi feed-card-in bilan bir xil g'oya va bitta
+   keyframe qayta ishlatiladi (dublikat animatsiya yozilmagan) —
+   JS (renderResults()) forEach index'ini --stagger-index sifatida
+   qo'yadi, kechikish CSS'da calc()+min() bilan hisoblanadi.
+   `.worker-card` klassi `renderWorkerOrders()`da ham ishlatiladi
+   (buyurtmalar ro'yxati) — u yerda ham xuddi shunday index
+   qo'yilgani uchun bonus sifatida bir xil kirish animatsiyasi
+   avtomatik ishlaydi, alohida CSS yozish shart bo'lmadi. */
+.worker-card {
+  animation: feed-card-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: min(calc(var(--stagger-index, 0) * 45ms), 360ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .worker-card { animation: none; }
+}
+.worker-card-top { display: flex; align-items: center; gap: 12px; }
+.worker-card-top--spread { justify-content: space-between; }
+.worker-card-name { font-size: var(--text-lg); font-weight: 600; }
+.worker-card-mahalla { font-size: var(--text-sm); color: var(--color-text-muted); }
+.worker-card-skills { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* 2.14 — "Saqlangan" ekranidagi kartalar uchun "olib tashlash"
+   tugmasi. Faqat shu modifier-class'da position:relative va o'ng
+   tomonga joy ochiladi — asosiy .worker-card (natijalar/buyurtmalar
+   ro'yxatida ham ishlatiladi) o'zgarmaydi. Vizual til .favorite-btn
+   bilan bir xil (davra tugma, border, active-holat), lekin kichikroq
+   o'lcham va "danger" ma'nosi doim ko'rinadi (bu ekranda bosish =
+   har doim OLIB TASHLASH, toggle emas).*/
+.worker-card--favorite { position: relative; padding-right: 52px; }
+.favorite-remove-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: 50%;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+/* A11y (Bo'lim 6, 5-band): vizual o'lcham 32px qoladi (karta ichida joy
+   tor), lekin ::after bilan bosiladigan maydon 44x44px'gacha "shaffof"
+   kengaytiriladi — barmoq bilan aniq bosish osonlashadi, dizayn buzilmaydi. */
+.favorite-remove-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 44px; height: 44px;
+  transform: translate(-50%, -50%);
+}
+.favorite-remove-btn svg { width: 16px; height: 16px; }
+.favorite-remove-btn:active {
+  transform: scale(0.9);
+  background: rgba(226, 87, 76, 0.12);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+.skill-chip {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 100px;
+  background: var(--color-primary-100);
+  color: var(--color-primary-dark);
+}
+
+/* 2.11 — Natijalar: List/Grid ko'rinishini almashtirish tugmasi.
+   MANTIQ: `.results-grid` faqat konteyner klassi — bir xil
+   `.worker-card` markup ikkala rejimda ham ishlaydi (dublikat
+   karta-shablon yozilmagan). Grid rejimida karta ichidagi
+   elementlar torroq bo'shliqqa moslashishi uchun kichik
+   kompaktlashtirish qo'shildi (nom kesiladi, skill-chip'lar
+   soni cheklanadi — pastda .worker-feed-grid bilan bir xil
+   `chip-group-grid`dagi 2-ustunli konventsiya, gap:12px). */
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.results-grid .worker-card { padding: 12px; gap: 8px; }
+.results-grid .worker-card-name {
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.results-grid .worker-card-mahalla {
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.results-grid .worker-card-skills .skill-chip:nth-child(n+3) { display: none; }
+
+/* Avatar-photo o'rnini bosuvchi placeholder — foydalanuvchi rasm
+   yuklamagunicha ismning bosh harfi + individual rang bilan
+   generatsiya qilinadi (real rasm URL o'rniga). */
+.avatar-photo {
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+/* O'lcham variantlari — avval JS ichida har safar qo'lda
+   `style="width:44px;height:44px;font-size:17px"` deb yozilar edi.
+   Endi bitta joyda: worker-card (kichik) va worker-detail (katta). */
+.avatar-photo--sm { width: 44px; height: 44px; font-size: var(--text-xl); }
+.avatar-photo--lg { width: 84px; height: 84px; font-size: var(--text-5xl); margin: 0 auto; }
+
+/* ------------------------------------------------------------
+   2.9 — Avatar uchun real rasm placeholder skeleton
+   Hozircha mock data'da avatarUrl umuman yo'q (faqat avatarColor +
+   ism harfi), shuning uchun bu holat vizual jihatdan hech qachon
+   ishga tushmaydi — lekin real backend'da worker rasm yuklaganda
+   kod tayyor bo'lishi uchun oldindan qurilgan. Mavjud skeleton-
+   shimmer keyframe qayta ishlatildi, yangi animatsiya yozilmadi.
+   Rasm onload bo'lgach shimmer va harf-fallback fade-out qiladi;
+   onerror bo'lsa (yuklanmasa) — img olib tashlanadi, harf-avatar
+   asl holida qoladi.
+------------------------------------------------------------ */
+.avatar-photo-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
+.avatar-photo--loaded .avatar-photo-img { opacity: 1; }
+.avatar-photo--loaded .avatar-photo-initial,
+.avatar-photo--loaded .avatar-skeleton-shimmer { opacity: 0; }
+.avatar-photo-initial {
+  position: relative;
+  z-index: 1;
+  transition: opacity 0.2s ease-out;
+}
+.avatar-skeleton-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, var(--color-border) 30%, var(--skeleton-highlight) 50%, var(--color-border) 70%);
+  background-size: 300% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  transition: opacity 0.2s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .avatar-skeleton-shimmer { animation: none; opacity: 0.5; }
+}
+
+/* Reyting badge — yulduzcha + son, Uzum Market uslubidagi kompakt ko'rinish */
+.rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums; /* reyting raqami (4.8, 4.9...) doim bir xil kenglikda tursin — ro'yxatda kartalar orasida raqam "sakramasligi" uchun (1.2 roadmap punkti) */
+}
+.rating-badge .star { color: var(--color-primary); display: inline-flex; line-height: 1; }
+.rating-count { color: var(--color-text-muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* ============================================================
+   Home feed — Uzum Market uslubidagi horizontal karusel
+   (2.9: grid'dan almashtirildi — pastdagi izohga qarang)
+============================================================ */
+.feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+.feed-header-link {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  cursor: pointer;
+}
+.worker-feed-grid {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 2px 2px 4px;
+  margin: -2px -2px -4px;
+}
+.worker-feed-grid::-webkit-scrollbar { display: none; }
+.worker-feed-card {
+  flex: 0 0 auto;
+  width: 42%;
+  min-width: 132px;
+  max-width: 168px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.15s ease;
+}
+.worker-feed-card:active { transform: scale(0.97); border-color: var(--color-primary); }
+/* 2.9 — Karusel oxirida o'ng chetdagi karta bosilib qolmasligi
+   uchun wrap ichida kichik shim (scroll-padding o'rniga oddiy
+   fade-edge orqali ishoralanadi, pastda). */
+.worker-feed-scroll-wrap {
+  position: relative;
+  margin: 0 -20px;
+  padding: 0 20px;
+}
+.worker-feed-scroll-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 4px;
+  right: 0;
+  width: 32px;
+  background: linear-gradient(90deg, transparent, var(--color-bg));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 2;
+}
+.worker-feed-scroll-wrap.has-overflow::after { opacity: 1; }
+.worker-feed-scroll-wrap.is-scrolled-end::after { opacity: 0; }
+/* ------------------------------------------------------------
+   2.9 — Feed grid stagger-animatsiya
+   MANTIQ: har bir karta o'zining index'iga qarab kechikish bilan
+   paydo bo'ladi (JS renderHomeFeed() --stagger-index custom
+   property'ni qo'yadi). Kechikish CSS darajasida hisoblanadi —
+   JS'da setTimeout zanjiri yozish shart emas, calc() orqali
+   bitta animation-delay formulasi barcha kartalarga tarqaladi.
+   Delay 45ms qadam bilan, lekin 8-kartadan keyin 360ms'da to'xtab
+   qoladi (min()) — feed uzun bo'lsa ham oxirgi kartalar
+   ortiqcha kutib qolmaydi (masalan 20 ta karta bo'lsa, 9-20
+   orasidagilar hammasi bir vaqtda emas, lekin max 360ms kechikib
+   chiqadi, cheksiz cho'zilib ketmaydi).
+------------------------------------------------------------ */
+.worker-feed-card {
+  animation: feed-card-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: min(calc(var(--stagger-index, 0) * 45ms), 360ms);
+}
+@keyframes feed-card-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .worker-feed-card { animation: none; }
+}
+.worker-feed-card .avatar-photo {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-5xl);
+}
+.worker-feed-card-name {
+  font-size: var(--text-base);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.worker-feed-card-skill {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 20px;
+  text-align: center;
+}
+.empty-state-emoji {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: var(--color-primary-100);
+  color: var(--color-primary-dark);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ============================================================
+   Worker detail
+============================================================ */
+.detail-avatar {
+  width: 84px; height: 84px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: var(--text-5xl);
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto;
+}
+.detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.detail-row-label { font-size: var(--text-xs); color: var(--color-text-muted); font-weight: 600; }
+.detail-row-value { font-size: var(--text-md); }
+.detail-row-value--numeric { font-variant-numeric: tabular-nums; } /* telefon raqami kabi sof raqamli qiymatlar uchun — matnli qiymatlarga (manzil, hudud) tegmaydi, 1.2 roadmap punkti */
+
+/* ============================================================
+   Sharhlar (Reviews) — 2.12 roadmap punkti
+   MANTIQ: har bir karta yengil bordered box, worker-card bilan
+   bir xil radius/padding tilini davom ettiradi — yangi vizual
+   til o'ylab topmaymiz, mavjud tizimga qo'shamiz.
+============================================================ */
+/* 2.12 + 8.3 — Portfolio/rasm galereyasi + lazy-load placeholder */
+.portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.portfolio-thumb {
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  background-color: var(--color-border);
+  overflow: hidden;
+  position: relative;
+}
+.portfolio-thumb .img-placeholder,
+.portfolio-thumb .lazy-img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+/* ------------------------------------------------------------
+   8.3 — Umumiy image lazy-load placeholder
+   Shimmer → rasm fade-in. loading="lazy" + onload/onerror.
+------------------------------------------------------------ */
+.img-placeholder {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-border);
+  width: 100%;
+}
+.img-placeholder-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, var(--color-border) 30%, var(--skeleton-highlight) 50%, var(--color-border) 70%);
+  background-size: 300% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  z-index: 1;
+}
+.img-placeholder img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.28s ease-out;
+  z-index: 2;
+}
+.img-placeholder.is-loaded .img-placeholder-shimmer { opacity: 0; pointer-events: none; }
+.img-placeholder.is-loaded img { opacity: 1; }
+.img-placeholder.is-error .img-placeholder-shimmer {
+  animation: none;
+  opacity: 0.4;
+}
+@media (prefers-reduced-motion: reduce) {
+  .img-placeholder-shimmer { animation: none; opacity: 0.5; }
+  .img-placeholder img { transition: none; }
+}
+
+.reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.review-card {
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 12px 16px;
+  background: var(--color-surface);
+}
+.review-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.review-card-author {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.review-card-stars {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.review-star { color: var(--color-border); display: flex; }
+.review-star.is-filled { color: var(--color-primary); }
+.review-card-text {
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+/* Ixcham empty-state — reviews bo'lmaganda sahifani to'liq
+   egallamaydigan, faqat bitta qatorlik variant */
+.empty-state--compact {
+  flex: none;
+  padding: 16px 0;
+  align-items: flex-start;
+  text-align: left;
+}
+
+/* Buyurtma holati badge — worker-card-top ichida reyting o'rniga
+   ishlatiladi (Buyurtmalar tab'i, faqat Ishchi ko'radi) */
+.order-status-badge {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 100px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.order-status-badge.is-new {
+  background: var(--color-primary-100);
+  /* A11y fix: --color-primary-dark ushbu fonda 2.38:1 kontrast berardi (WCAG AA
+     4.5:1 talab qiladi) — maxsus token bilan almashtirildi, ikkala rejimda ham
+     mustaqil sinab ko'rilgan (light 5.3:1, dark 8.25:1). */
+  color: var(--color-primary-text-on-100);
+}
+.order-status-badge.is-done {
+  background: rgba(52, 168, 83, 0.12);
+  color: var(--color-success);
+}
+
+/* ============================================================
+   Xabarlar (Messages) — suhbatlar ro'yxati
+============================================================ */
+.conversation-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease;
+}
+.conversation-item:active { background: var(--color-primary-100); }
+.conversation-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.conversation-item-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.conversation-item-name { font-size: var(--text-base); font-weight: 600; }
+.conversation-item-time { font-size: 12px; color: var(--color-text-muted); flex-shrink: 0; }
+.conversation-item-preview {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.conversation-item.has-unread .conversation-item-preview { color: var(--color-text); font-weight: 600; }
+.conversation-unread-badge {
+  flex-shrink: 0;
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0 8px;
+  border-radius: 100px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================
+   Chat oynasi
+============================================================ */
+.chat-bubble-row { display: flex; }
+.chat-bubble-row.is-me { justify-content: flex-end; }
+.chat-bubble {
+  max-width: 76%;
+  padding: 8px 16px;
+  border-radius: 16px;
+  font-size: var(--text-base);
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+.chat-bubble-row:not(.is-me) .chat-bubble {
+  background: var(--color-surface-2, var(--color-primary-100));
+  border-bottom-left-radius: 4px;
+}
+.chat-bubble-row.is-me .chat-bubble {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-bottom-right-radius: 4px;
+}
+/* 8.1 — Optimistic: yuborilayotgan xabar biroz shaffof */
+.chat-bubble-row.is-pending .chat-bubble {
+  opacity: 0.72;
+}
+.chat-bubble-row.is-pending .chat-bubble-time {
+  font-style: italic;
+  opacity: 0.85;
+}
+.chat-bubble-time {
+  display: block;
+  font-size: 10px;
+  margin-top: 4px;
+  opacity: 0.7;
+}
+.chat-input-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chat-input-bar .input { min-height: 44px; height: auto; }
+.chat-send-btn {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.chat-send-btn:active { transform: scale(0.92); }
+
+/* ============================================================
+   Profile
+============================================================ */
+/* 2.13 — Statistika bloki: ikki ustunli vizual card ("ko'rilgan" /
+   "baho olingan"). profile-row'lardan ATAYLAB alohida vizual til —
+   bu son-ko'rsatkich, ro'yxat-qatori emas, shuning uchun card+border
+   emas, ajratilgan "tile" ko'rinishi beriladi. */
+.profile-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.profile-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 8px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt, var(--color-surface));
+  border: 1px solid var(--color-border);
+}
+.profile-stat-card svg { color: var(--color-primary); opacity: 0.85; }
+.profile-stat-value { font-size: 20px; font-weight: 700; }
+.profile-stat-label { font-size: 12px; color: var(--color-text-muted); text-align: center; }
+
+.profile-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.profile-row-label {
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.profile-row-label svg { flex-shrink: 0; opacity: 0.6; }
+.profile-row-value { font-size: var(--text-base); font-weight: 600; text-align: right; max-width: 60%; }
+.profile-row-value--numeric { font-variant-numeric: tabular-nums; } /* telefon raqami uchun (1.2 roadmap punkti) — Ism/Rol/Hudud/Manzil kabi matnli qatorlarga tegmaydi */
+
+/* Tungi rejim svitcheri — profile-row bilan bir xil ritm/border,
+   lekin qiymat o'rniga toggle switch ko'rsatadi. */
+.profile-theme-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.profile-theme-row-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--color-text);
+}
+.switch {
+  position: relative;
+  width: 46px; height: 26px;
+  border-radius: 100px;
+  background: var(--color-border);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+}
+.switch-thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.switch.is-on { background: var(--color-primary); }
+.switch.is-on .switch-thumb { transform: translateX(20px); }
+
+/* ============================================================
+   Toast / Snackbar
+   MANTIQ: alert() o'rniga. Bitta konteyner (#toast-container)
+   device ichida fixed turadi, har bir toast shu yerga push
+   qilinadi va o'zi avtomatik yo'qoladi. Bir vaqtda bir nechta
+   toast chiqsa — pastdan tepaga stack bo'lib qatorlashadi.
+============================================================ */
+.toast-container {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  padding: 0 16px;
+  padding-bottom: calc(90px + env(safe-area-inset-bottom, 0));
+  pointer-events: none;
+  z-index: 200;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--color-inverse-surface);
+  color: #fff;
+  font-size: var(--text-base);
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(26,31,61,0.22);
+  animation: toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: auto;
+}
+.toast.toast-out { animation: toast-out 0.22s ease forwards; }
+.toast-icon { flex-shrink: 0; display: flex; }
+.toast-success .toast-icon { color: var(--color-success); }
+.toast-error .toast-icon { color: #FF6B60; }
+.toast-info .toast-icon { color: var(--color-primary); }
+.toast-warning .toast-icon { color: var(--color-warning); }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(8px) scale(0.96); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast, .toast.toast-out { animation: none; }
+}
+
+/* ============================================================
+   4.4 — Offline banner
+   MANTIQ: navigator.onLine + online/offline event'lariga bog'liq
+   (js/app.js — initOfflineDetection()). Toast'dan farqli ravishda
+   o'zi yo'qolmaydi — aloqa qaytmaguncha turadi, chunki bu holat
+   "xabar" emas, "davom etayotgan sharoit". Device'ning eng yuqori
+   qatlamida, notch tagida, barcha ekranlar ustidan ko'rinadi —
+   shuning uchun screens-viewport'dan TASHQARIDA joylashgan.
+============================================================ */
+.offline-banner {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  padding-top: calc(9px + env(safe-area-inset-top, 0));
+  background: var(--color-danger);
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  transform: translateY(-100%);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+.offline-banner svg { flex-shrink: 0; }
+.offline-banner.is-visible { transform: translateY(0); }
+.offline-banner.is-success { background: var(--color-success); }
+@media (prefers-reduced-motion: reduce) {
+  .offline-banner { transition: none; }
+}
+
+/* ============================================================
+   Skeleton loader (shimmer)
+   MANTIQ: worker-card va worker-feed-card bilan bir xil o'lcham/
+   padding'da — shuning uchun almashtirilganda layout sakramaydi.
+   Shimmer — CSS gradient background-position animatsiyasi bilan,
+   JS shart emas.
+============================================================ */
+.skeleton-block {
+  background: linear-gradient(100deg, var(--color-border) 30%, var(--skeleton-highlight) 50%, var(--color-border) 70%);
+  background-size: 300% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-block { animation: none; opacity: 0.7; }
+}
+.skeleton-worker-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.skeleton-worker-card .skeleton-row { display: flex; align-items: center; gap: 12px; }
+.skeleton-avatar { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; }
+.skeleton-line { height: 12px; }
+.skeleton-feed-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.skeleton-feed-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.skeleton-feed-card .skeleton-block:first-child { aspect-ratio: 1/1; width: 100%; }
+
+/* ============================================================
+   Reusable empty / error state action button
+   MANTIQ: mavjud .empty-state bazaviy ko'rinishga tayanadi,
+   bu faqat error variant uchun accent va tugma qo'shadi.
+============================================================ */
+.state-action-btn {
+  margin-top: 8px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 20px;
+  font-size: var(--text-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease; /* 3.4: yagona shu joyda yo'q edi, tuzatildi */
+}
+.state-action-btn:active { background: var(--color-primary-dark); }
+.empty-state-emoji.is-error { background: color-mix(in srgb, var(--color-danger) 12%, transparent); color: var(--color-danger); } /* 4.2 audit: qattiq rgba() color-mix()ga almashtirildi — dark mode'da --color-danger o'zgarganda fon ham to'g'ri moslashishi uchun (loyihadagi mavjud .field.has-error patterniga mos) */
+
+/* ============================================================
+   1.3 — Spinner (Loading icon)
+   Reusable loading indicator. O'lchamlar: sm (16), md (22), lg (32).
+   currentColor ishlatadi — parent rangiga moslashadi.
+============================================================ */
+.spinner {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spinner-rotate 0.7s linear infinite;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.spinner-sm { width: 16px; height: 16px; border-width: 2px; }
+.spinner-md { width: 22px; height: 22px; border-width: 2.5px; }
+.spinner-lg { width: 32px; height: 32px; border-width: 3px; }
+
+@keyframes spinner-rotate {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 1.4s; }
+}
+
+/* Button ichida spinner ishlatilganda matnni yashirish uchun */
+.btn.is-loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+.btn.is-loading .spinner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--color-on-primary, #fff);
+  animation: spinner-rotate 0.7s linear infinite;
+}
+
+/* ============================================================
+   2.9 — Pull-to-refresh vizual indikator (Home feed)
+   MANTIQ: `.screen` o'zi scroll konteyner (overflow-y:auto,
+   position:absolute) — shuning uchun indikator uning ichida
+   position:absolute bilan joylashadi va content bilan birga
+   scroll bo'ladi, faqat scrollTop===0'da JS uni pastga tortadi.
+   Drag paytida JS transform/opacity'ni to'g'ridan-to'g'ri
+   inline style orqali qo'yadi (is-dragging klassi transition'ni
+   o'chiradi — barmoqni 1:1 kuzatishi uchun), qo'yib yuborilganda
+   esa CSS transition snap-back/hold uchun ishga tushadi.
+============================================================ */
+.ptr-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-56px);
+  opacity: 0;
+  color: var(--color-primary);
+  pointer-events: none;
+  z-index: 2;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+}
+.ptr-indicator.is-dragging { transition: none; }
+.ptr-arrow { transition: transform 0.2s ease; }
+.ptr-indicator.is-armed .ptr-arrow { transform: rotate(180deg); }
+.ptr-spinner { display: none; }
+.ptr-indicator.is-refreshing .ptr-arrow { display: none; }
+.ptr-indicator.is-refreshing .ptr-spinner { display: inline-block; }
+@media (prefers-reduced-motion: reduce) {
+  .ptr-indicator { transition: none; }
+  .ptr-arrow { transition: none; }
+}
+
+/* ============================================================
+   1.3 — Status icon wrappers (error / warning / success / info)
+   Toast va empty/error state'larda ishlatish uchun.
+============================================================ */
+.status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+.status-icon-sm { width: 28px; height: 28px; }
+.status-icon-md { width: 40px; height: 40px; }
+.status-icon-lg { width: 56px; height: 56px; }
+
+.status-icon--error {
+  background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  color: var(--color-danger);
+}
+.status-icon--warning {
+  background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+  color: var(--color-warning);
+}
+.status-icon--success {
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  color: var(--color-success);
+}
+.status-icon--info {
+  background: color-mix(in srgb, var(--color-info) 14%, transparent);
+  color: var(--color-info);
+}
+
+.status-icon svg {
+  width: 55%;
+  height: 55%;
+}
+
+/* 5 — Landscape orientation block (Telegram Mini App'lar doim portret) */
+.landscape-block {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.landscape-block svg { color: var(--color-text-muted); margin-bottom: 4px; }
+@media (orientation: landscape) and (max-height: 500px) {
+  .landscape-block { display: flex; }
+  .screens-viewport, .tab-bar, .offline-banner, .toast-container { visibility: hidden; }
+}
+
+/* ============================================
+   6. ACCESSIBILITY — FOKUS HOLATI (Bo'lim 6, 2-band)
+   MANTIQ: :focus-visible ishlatiladi, :focus emas — sabab: sichqoncha
+   bilan bosilganda ham fokus ring ko'rinib qolsa, bu "vizual shov-shov"
+   yaratadi (ko'p userlar buni "nosozlik" deb o'ylashi mumkin).
+   :focus-visible faqat KLAVIATURA orqali fokus qilinganda ishga tushadi —
+   zamonaviy barcha brauzerlarda qo'llab-quvvatlanadi.
+   Bitta markaziy qoida — har bir yangi role="button"/checkbox/radio/tab/
+   option elementga alohida focus CSS yozish shart emas, hammasi shu joydan
+   meros oladi.
+   ============================================ */
+[role="button"]:focus-visible,
+[role="radio"]:focus-visible,
+[role="checkbox"]:focus-visible,
+[role="option"]:focus-visible,
+[role="tab"]:focus-visible,
+button:focus-visible,
+.icon-btn:focus-visible,
+.selector:focus-visible {
+  outline: 2.5px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Sichqoncha bilan bosilganda focus-ring chiqmasin (faqat klaviatura uchun) */
+[role="button"]:focus:not(:focus-visible),
+[role="radio"]:focus:not(:focus-visible),
+[role="checkbox"]:focus:not(:focus-visible),
+[role="option"]:focus:not(:focus-visible),
+[role="tab"]:focus:not(:focus-visible),
+button:focus:not(:focus-visible),
+.icon-btn:focus:not(:focus-visible),
+.selector:focus:not(:focus-visible) {
+  outline: none;
+}

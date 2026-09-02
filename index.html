@@ -1,1 +1,613 @@
-Salom biz Chaqir.uz loyihasini boshlamoqdamiz
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Chaqir — Telegram Mini App</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+<link rel="shortcut icon" href="assets/favicon.ico">
+<link rel="apple-touch-icon" sizes="192x192" href="assets/logo-192.png">
+<meta name="theme-color" content="#1A1F3D">
+<meta name="telegram-web-app" content="true">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+  /* Theme + Telegram Mini App early boot (CSS dan oldin) */
+  (function () {
+    try {
+      var tg = window.Telegram && Telegram.WebApp;
+      if (tg && typeof tg.initData !== 'undefined') {
+        document.documentElement.classList.add('tg-mini-app');
+        var saved = null;
+        try { saved = localStorage.getItem('chaqir-theme'); } catch (e) {}
+        if (saved === 'dark' || saved === 'light') {
+          document.documentElement.setAttribute('data-theme', saved);
+        } else {
+          document.documentElement.setAttribute('data-theme', tg.colorScheme === 'dark' ? 'dark' : 'light');
+        }
+      } else {
+        try {
+          var s = localStorage.getItem('chaqir-theme');
+          if (s === 'dark' || s === 'light') document.documentElement.setAttribute('data-theme', s);
+        } catch (e) {}
+      }
+    } catch (e) {}
+  })();
+</script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="device-shell">
+  <div class="device">
+    <div class="device-notch"></div>
+    <div class="offline-banner" id="offline-banner" role="status" aria-live="polite">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+      <span>Internet aloqasi yo'q</span>
+    </div>
+    <div class="screens-viewport" id="viewport">
+
+      <!-- ============================================
+           1. START / ONBOARDING
+      ============================================ -->
+      <section class="screen active" data-screen="onboarding">
+        <div class="screen-content center-col justify-center gap-24">
+          <div class="logo-badge logo-badge--hero logo-badge--brand" aria-hidden="true">
+            <img src="assets/logo-192.png" alt="Chaqir" width="96" height="96" decoding="async">
+          </div>
+          <div class="gap-8 items-center onboarding-story">
+            <div class="h1">Chaqir</div>
+            <div class="body text-measure-sm onboarding-tagline">Ishchi va ish beruvchini bir joyga chaqiramiz</div>
+            <p class="onboarding-story-text">Mahallangizdagi ishonchli ustalar va ishchilarni tez toping — yoki o'z ishingizni osonroq e'lon qiling. Oddiy, ochiq va yaqin.</p>
+          </div>
+        </div>
+        <div class="screen-fixed-bottom gap-12">
+          <button class="btn btn-primary" onclick="go('role-select')">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l5 5-11 11H5v-5z"/></svg>
+            Boshlash
+          </button>
+          <button class="btn btn-secondary" onclick="go('login')">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
+            Kirish
+          </button>
+        </div>
+      </section>
+
+      <!-- ============================================
+           2. ROL TANLASH
+      ============================================ -->
+      <section class="screen" data-screen="role-select">
+        <div class="topbar">
+          <button class="icon-btn" onclick="goBack()" aria-label="Orqaga qaytish">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div class="spacer"></div>
+        </div>
+        <div class="screen-content gap-24">
+          <div class="h1" id="role-select-heading">Siz kimsiz?</div>
+          <div class="gap-12" role="radiogroup" aria-labelledby="role-select-heading">
+            <div class="role-card" id="role-worker" role="radio" aria-checked="false" tabindex="0" aria-label="Ishchi — Ish topmoqchiman" onclick="selectRole('worker')" onkeydown="handleCardKeydown(event, 'worker')">
+              <div class="role-emoji" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+              <div class="role-text">
+                <div class="role-title">Ishchi</div>
+                <div class="role-sub">Ish topmoqchiman</div>
+              </div>
+            </div>
+            <div class="role-card" id="role-employer" role="radio" aria-checked="false" tabindex="0" aria-label="Ish qidiruvchi — Ishchi izlayapman" onclick="selectRole('employer')" onkeydown="handleCardKeydown(event, 'employer')">
+              <div class="role-emoji" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+              <div class="role-text">
+                <div class="role-title">Ish qidiruvchi</div>
+                <div class="role-sub">Ishchi izlayapman</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="screen-fixed-bottom">
+          <button class="btn btn-primary is-disabled" id="role-next-btn" onclick="goNextAfterRole()">Davom etish</button>
+        </div>
+      </section>
+
+      <!-- ============================================
+           3. ISM KIRITISH
+      ============================================ -->
+      <section class="screen" data-screen="name-input">
+        <div class="topbar">
+          <button class="icon-btn" onclick="goBack()" aria-label="Orqaga qaytish">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div class="spacer"></div>
+        </div>
+        <div class="progress-steps" id="name-progress"></div>
+        <div class="screen-content gap-24 pt-32">
+          <div class="gap-8">
+            <div class="h1">Ismingiz nima?</div>
+            <div class="body">To'liq ismingizni kiriting</div>
+          </div>
+          <div class="field field--float" id="field-name">
+            <input class="input" type="text" placeholder=" " id="name-field" maxlength="50" autocomplete="name" oninput="checkName()">
+            <label class="field-label" for="name-field">Ism va familiya</label>
+            <div class="char-counter" id="name-counter">0 / 50</div>
+            <div class="field-error" id="name-error">Ismni kiriting</div>
+          </div>
+        </div>
+        <div class="screen-fixed-bottom">
+          <button class="btn btn-primary is-disabled" id="name-next-btn" onclick="goNextAfterName()">Davom etish</button>
+        </div>
+      </section>
+
+      <!-- ============================================
+           4. KO'NIKMA TANLASH (faqat Ishchi)
+      ============================================ -->
+      <section class="screen" data-screen="skills-select">
+        <div class="topbar">
+          <button class="icon-btn" onclick="goBack()" aria-label="Orqaga qaytish">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div class="spacer"></div>
+        </div>
+        <div class="progress-steps" id="skills-progress"></div>
+        <div class="screen-content gap-24 pt-32">
+          <div class="gap-8">
+            <div class="h1">Qaysi sohada ishlaysiz?</div>
+            <div class="body skills-subtitle-row">
+              <span>Bir nechtasini tanlashingiz mumkin</span>
+              <span class="skills-count-badge hidden" id="skills-count-badge">0</span>
+            </div>
+          </div>
+          <div class="chip-scroll-wrap" id="skills-chip-scroll">
+            <div class="chip-group chip-group-grid" id="skills-chip-group"></div>
+          </div>
+        </div>
+        <div class="screen-fixed-bottom">
+          <button class="btn btn-primary is-disabled" id="skills-next-btn" onclick="goNextAfterSkills()">Davom etish</button>
+        </div>
+      </section>
+
+      <!-- ============================================
+           5. HUDUD TANLASH
+      ============================================ -->
+      <section class="screen" data-screen="region-select">
+        <div class="topbar">
+          <button class="icon-btn" onclick="goBack()" aria-label="Orqaga qaytish">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div class="spacer"></div>
+        </div>
+        <div class="progress-steps" id="region-progress"></div>
+        <div class="screen-content gap-24 pt-32">
+          <div class="gap-8">
+            <div class="h1">Hududingiz qayerda?</div>
+            <div class="body">Viloyat, tuman va mahallangizni tanlang</div>
+          </div>
+          <div class="region-group">
+            <div class="selector" id="sel-viloyat" role="button" tabindex="0" aria-haspopup="listbox" aria-label="Viloyatni tanlang" onclick="openSheet('viloyat')" onkeydown="handleCardKeydown(event)">
+              <span class="selector-value">Viloyatni tanlang</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            <div class="selector disabled" id="sel-tuman" role="button" tabindex="-1" aria-haspopup="listbox" aria-disabled="true" aria-label="Tumanni tanlang" onclick="openSheet('tuman')" onkeydown="handleCardKeydown(event)">
+              <span class="selector-value">Tumanni tanlang</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            <div class="selector disabled" id="sel-mahalla" role="button" tabindex="-1" aria-haspopup="listbox" aria-disabled="true" aria-label="Mahallani tanlang" onclick="openSheet('mahalla')" onkeydown="handleCardKeydown(event)">
+              <span class="selector-value">Mahallani tanlang</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="screen-fixed-bottom">
+          <button class="btn btn-primary is-disabled" id="region-next-btn" onclick="goAfterRegion()">Davom etish</button>
+        </div>
+
+        <!-- Bottom sheet -->
+        <div class="sheet-backdrop" id="region-sheet-backdrop" onclick="closeSheet()" aria-hidden="true"></div>
+        <div class="sheet" id="region-sheet">
+          <div class="sheet-handle"></div>
+          <div class="sheet-header">
+            <div class="h2" id="sheet-title">Viloyatni tanlang</div>
+            <div class="sheet-search" id="sheet-search-wrap">
+              <svg class="sheet-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              <input type="text" placeholder="Qidirish..." id="sheet-search-input" oninput="onSheetSearchInput(this.value)" autocomplete="off" aria-label="Ro'yxatdan qidirish">
+              <span class="sheet-search-typing" id="sheet-search-typing" aria-hidden="true"><span class="spinner spinner-sm"></span></span>
+            </div>
+          </div>
+          <div class="sheet-list" id="sheet-list"></div>
+        </div>
+      </section>
+
+      <!-- ============================================
+           6. ANIQ MANZIL (ixtiyoriy, Ishchi uchun)
+      ============================================ -->
+      <section class="screen" data-screen="address-input">
+        <div class="topbar">
+          <button class="icon-btn" onclick="goBack()" aria-label="Orqaga qaytish">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div class="spacer"></div>
+        </div>
+        <div class="screen-content gap-24 pt-32">
+          <div class="gap-8">
+            <div class="h1">Aniq manzil</div>
+            <div class="body">Ixtiyoriy — mijozlarga aniqroq topilishingiz uchun</div>
+          </div>
+          <div class="field field--float" id="field-address">
+            <input class="input" type="text" placeholder=" " id="address-field" maxlength="80" autocomplete="street-address" oninput="checkAddress()">
+            <label class="field-label" for="address-field">Ko'cha, uy raqami</label>
+            <div class="char-counter" id="address-counter">0 / 80</div>
+            <div class="field-error" id="address-error">Manzilni kiriting</div>
+          </div>
+        </div>
+        <div class="screen-fixed-bottom gap-12">
+          <button class="btn btn-primary" onclick="goNextAfterAddress()">Davom etish</button>
+          <button class="btn btn-text is-centered" onclick="skipAddress()">O'tkazib yuborish</button>
+        </div>
+      </section>
+
+      <!-- ============================================
+           7. TELEFON RAQAM
+      ============================================ -->
+      <section class="screen" data-screen="phone-share">
+        <div class="topbar">
+          <button class="icon-btn" onclick="goBack()" aria-label="Orqaga qaytish">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div class="spacer"></div>
+        </div>
+        <div class="progress-steps" id="phone-progress"></div>
+        <div class="screen-content center-col pt-48 gap-14">
+          <div class="logo-badge is-sm">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#F2A93B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          </div>
+          <div class="h1">Telefon raqamingiz</div>
+          <div class="body text-measure-md">Mijozlar siz bilan bog'lanishi uchun raqamingiz kerak bo'ladi</div>
+        </div>
+        <div class="screen-fixed-bottom gap-12">
+          <button class="btn btn-primary tg-share-btn" onclick="sharePhone()"><span class="tg-icon-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span> Raqamni ulashish</button>
+          <div class="tg-trust-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Raqamingiz faqat mijozlarga ko'rinadi</div>
+          <button class="btn btn-text is-centered" onclick="go('manual-phone')">Qo'lda kiritish</button>
+        </div>
+      </section>
+
+      <!-- Manual phone entry -->
+      <section class="screen" data-screen="manual-phone">
+        <div class="topbar">
+          <button class="icon-btn" onclick="goBack()" aria-label="Orqaga qaytish">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div class="spacer"></div>
+        </div>
+        <div class="screen-content gap-24 pt-24">
+          <div class="gap-8">
+            <div class="h1">Raqamni kiriting</div>
+            <div class="body">Qo'lda telefon raqamingizni yozing</div>
+          </div>
+          <div class="field field--float" id="field-manual-phone">
+            <input class="input" type="tel" placeholder=" " id="manual-phone-field" inputmode="tel" autocomplete="tel" oninput="checkManualPhone()">
+            <label class="field-label" for="manual-phone-field">Telefon raqam</label>
+            <div class="field-error" id="manual-phone-error">To'liq telefon raqamini kiriting</div>
+          </div>
+        </div>
+        <div class="screen-fixed-bottom">
+          <button class="btn btn-primary is-disabled" id="manual-phone-next-btn" onclick="submitManualPhone()">Davom etish</button>
+        </div>
+      </section>
+
+      <!-- ============================================
+           8. TABRIK / MUVAFFAQIYAT
+      ============================================ -->
+      <section class="screen" data-screen="success">
+        <div class="confetti-container" id="confetti-container"></div>
+        <div class="screen-content center-col justify-center gap-20">
+          <div class="success-circle">
+            <div class="success-circle-inner">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path class="success-check-path" d="M20 6L9 17l-5-5"/></svg>
+            </div>
+          </div>
+          <div class="gap-8 items-center">
+            <div class="h1"><span id="welcome-name">Xush kelibsiz</span>!</div>
+            <div class="body text-measure-md">Xush kelibsiz! Endi mahallangizdagi ishlarni yoki ishchilarni topishingiz mumkin.</div>
+          </div>
+        </div>
+        <div class="screen-fixed-bottom">
+          <button class="btn btn-primary" onclick="goHome()">Bosh menyuga o'tish</button>
+        </div>
+      </section>
+
+      <!-- ============================================
+           9. KIRISH (LOGIN)
+      ============================================ -->
+      <section class="screen" data-screen="login">
+        <div class="topbar">
+          <button class="icon-btn" onclick="goBack()" aria-label="Orqaga qaytish">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+          </button>
+        </div>
+        <div class="screen-content gap-24 pt-24">
+          <div class="gap-8">
+            <div class="h1">Xush kelibsiz!</div>
+            <div class="body">Davom etish uchun telefon raqamingizni ulashing</div>
+          </div>
+        </div>
+        <div class="screen-fixed-bottom gap-12">
+          <button class="btn btn-primary tg-share-btn" onclick="loginShare()"><span class="tg-icon-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span> Raqamni ulashish</button>
+          <div class="tg-trust-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Raqamingiz faqat mijozlarga ko'rinadi</div>
+          <button class="btn btn-text is-centered" onclick="go('login-manual-phone')">Qo'lda kiritish</button>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="login-manual-phone">
+        <div class="topbar">
+          <button class="icon-btn" onclick="goBack()" aria-label="Orqaga qaytish">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+          </button>
+        </div>
+        <div class="screen-content gap-24 pt-24">
+          <div class="gap-8">
+            <div class="h1">Raqam bilan kirish</div>
+            <div class="body">Ro'yxatdan o'tgan telefon raqamingizni kiriting</div>
+          </div>
+          <div class="field field--float" id="field-login-phone">
+            <input class="input" type="tel" placeholder=" " id="login-phone-field" inputmode="tel" autocomplete="tel" oninput="checkLoginPhone()">
+            <label class="field-label" for="login-phone-field">Telefon raqam</label>
+            <div class="field-error" id="login-phone-error">To'liq telefon raqamini kiriting</div>
+          </div>
+        </div>
+        <div class="screen-fixed-bottom">
+          <button class="btn btn-primary is-disabled" id="login-phone-next-btn" onclick="loginManualSubmit()">Kirish</button>
+        </div>
+      </section>
+
+      <!-- ============================================
+           10. BOSH MENYU
+      ============================================ -->
+      <section class="screen" data-screen="home">
+        <!-- 2.9 — Pull-to-refresh vizual indikator. Faqat employer
+             feed'ida ishlaydi (worker uchun feed yo'q). JS orqali
+             (initPullToRefresh) scrollTop===0'da pastga tortilganda
+             ko'rinadi, chegaradan o'tsa strelka spinnerga almashib
+             renderHome()'ni qayta chaqiradi (mavjud skeleton+500ms
+             kechikish mantig'i qayta ishlatiladi). -->
+        <div class="ptr-indicator" id="ptr-indicator">
+          <svg class="ptr-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M12 20l-6-6M12 20l6-6"/></svg>
+          <div class="spinner spinner-md ptr-spinner"></div>
+        </div>
+        <div class="screen-content gap-24 pt-24">
+          <div class="user-header">
+            <div class="avatar-placeholder" id="home-avatar">A</div>
+            <div class="gap-4">
+              <div class="h2" id="home-name">Foydalanuvchi</div>
+              <div class="role-tag" id="home-role">Ishchi</div>
+            </div>
+          </div>
+
+          <div id="home-employer-block" style="display:none;">
+            <div class="action-card" role="button" tabindex="0" aria-label="Ishchi qidirish — Sohangizga mos ishchini toping" onclick="go('search-filters')" onkeydown="handleCardKeydown(event)">
+              <div class="action-card-emoji" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+              <div class="gap-4">
+                <div class="action-card-title">Ishchi qidirish</div>
+                <div class="action-card-sub">Sohangizga mos ishchini toping</div>
+              </div>
+              <svg class="action-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+
+            <div class="feed-header">
+              <div class="h2">Tavsiya etilgan ishchilar</div>
+              <div class="feed-header-link" role="button" tabindex="0" aria-label="Barcha tavsiya etilgan ishchilarni ko'rish" onclick="go('search-filters')" onkeydown="handleCardKeydown(event)">Hammasi</div>
+            </div>
+            <!-- 2.9 — Horizontal karusel variant (Uzum-style) tanlandi.
+                 SABAB: "Hammasi" havolasi allaqachon to'liq grid'ga
+                 (search-filters) olib boradi — home'dagi grid o'sha
+                 bilan funksional dublikat edi (ikkalasi ham "hammasini
+                 ko'rish" holatini beradi). Horizontal karusel esa
+                 "tavsiya" semantikasiga mosroq: qisqa, tez ko'zdan
+                 kechiriladigan tanlov, to'liq ro'yxat esa alohida
+                 ekranda qoladi. Bonus: vertikal joy tejaladi — home
+                 ekranida scroll qilmasdan ko'proq narsa ko'rinadi. -->
+            <div class="worker-feed-scroll-wrap" id="home-worker-feed-wrap">
+              <div class="worker-feed-grid" id="home-worker-feed"></div>
+            </div>
+          </div>
+
+          <div id="home-worker-block" style="display:none;">
+            <div class="info-card">
+              <div class="info-card-emoji"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+              <div class="body">Siz hozircha ishchi sifatida ro'yxatdasiz. Mijozlar sizni qidiruv orqali topadi.</div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-bar"></div>
+      </section>
+
+      <!-- Saqlangan (Favorites) -->
+      <section class="screen" data-screen="favorites">
+        <div class="topbar">
+          <h2>Saqlangan</h2>
+        </div>
+        <div class="screen-content gap-12 pt-12" id="favorites-list"></div>
+        <div class="tab-bar"></div>
+      </section>
+
+      <!-- Xabarlar (Messages) — suhbatlar ro'yxati -->
+      <section class="screen" data-screen="messages">
+        <div class="topbar">
+          <h2>Xabarlar</h2>
+        </div>
+        <div class="screen-content gap-4 pt-8" id="messages-list"></div>
+        <div class="tab-bar"></div>
+      </section>
+
+      <!-- ============================================
+           CHAT OYNASI — suhbatlar ro'yxatidan ochiladi
+           MANTIQ: mustaqil ekran (tab-bar'siz, worker-detail kabi
+           bosqichma-bosqich navigatsiya — goBack() orqali ro'yxatga
+           qaytadi). Xabar pufakchalari uchun scroll konteyner +
+           pastda input joy, xuddi search-filters'dagi kabi
+           screen-fixed-bottom pattern.
+      ============================================ -->
+      <section class="screen" data-screen="chat-detail">
+        <div class="topbar">
+          <button class="icon-btn" onclick="goBack()" aria-label="Orqaga qaytish">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <h2 id="chat-contact-name"></h2>
+          <div class="spacer"></div>
+        </div>
+        <div class="screen-content gap-8 pt-12" id="chat-messages"></div>
+        <div class="screen-fixed-bottom">
+          <div class="chat-input-bar">
+            <input class="input" type="text" id="chat-input" placeholder="Xabar yozing..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+            <button class="chat-send-btn" onclick="sendChatMessage()" aria-label="Yuborish">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================
+           BUYURTMALAR — faqat Ishchi tab-bar'ida
+           MANTIQ: Employer'ning "Qidiruv" ekraniga mos keladigan,
+           lekin funksional jihatdan TESKARI ekran: bu yerda ishchi
+           OʻZI qidirmaydi, unga kelgan mijoz so'rovlarini ko'radi.
+           Hozircha backend yo'q, shuning uchun MOCK_ORDERS ustida
+           xuddi search-results kabi skeleton -> data/bo'sh holat
+           patterni qo'llaniladi (Bo'lim 4 komponentlari qayta
+           ishlatiladi — yangi loading/error UI o'ylab topilmaydi).
+      ============================================ -->
+      <section class="screen" data-screen="worker-orders">
+        <div class="topbar">
+          <h2>Buyurtmalar</h2>
+        </div>
+        <div class="screen-content gap-12 pt-12" id="worker-orders-list"></div>
+        <div class="tab-bar"></div>
+      </section>
+
+      <!-- ============================================
+           11. QIDIRUV FILTRI
+      ============================================ -->
+      <section class="screen" data-screen="search-filters">
+        <div class="topbar">
+          <h2>Ishchi qidirish</h2>
+          <div class="spacer"></div>
+          <!-- 2.10 — Filtrni tozalash. Faqat kamida bitta filtr faol
+               bo'lganda ko'rinadi (updateSearchButtonBadge() bilan
+               bir vaqtda boshqariladi) — aks holda bo'sh ekranda
+               ma'nosiz "Tozalash" havolasi ko'zga tashlanib turardi. -->
+          <div class="feed-header-link filter-reset-link hidden" id="filter-reset-link" role="button" tabindex="0" aria-label="Filtrlarni tozalash" onclick="resetSearchFilters()" onkeydown="handleCardKeydown(event)">Tozalash</div>
+        </div>
+        <div class="screen-content gap-24 pt-16">
+          <div class="gap-8">
+            <div class="field-label">Soha</div>
+            <div class="chip-group chip-group-grid" id="filter-chip-group"></div>
+          </div>
+          <div class="gap-8">
+            <div class="field-label">Hudud</div>
+            <div class="region-group">
+              <div class="selector" id="filter-sel-viloyat" role="button" tabindex="0" aria-haspopup="listbox" aria-label="Viloyatni tanlang" onclick="openSheet('viloyat', true)" onkeydown="handleCardKeydown(event)">
+                <span class="selector-value">Viloyatni tanlang</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+              <div class="selector disabled" id="filter-sel-tuman" role="button" tabindex="-1" aria-haspopup="listbox" aria-disabled="true" aria-label="Tumanni tanlang" onclick="openSheet('tuman', true)" onkeydown="handleCardKeydown(event)">
+                <span class="selector-value">Tumanni tanlang</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="screen-fixed-bottom">
+          <!-- 2.10 — Natija sonini live preview qilish. MANTIQ: haqiqiy
+               qidiruv (runSearch()) 600ms sun'iy kechikish bilan
+               ishlaydi (backend so'rovini simulyatsiya qilish uchun),
+               lekin preview mock data ustida to'g'ridan-to'g'ri,
+               kechikishsiz hisoblanadi — chunki bu faqat "necha kishi
+               mos keladi" degan tezkor ishora, real so'rov emas. -->
+          <div class="filter-preview-text" id="filter-preview-text"></div>
+          <button class="btn btn-primary" id="search-filters-btn" onclick="runSearch()">Qidirish</button>
+        </div>
+        <div class="tab-bar"></div>
+      </section>
+
+      <!-- ============================================
+           12. NATIJALAR
+      ============================================ -->
+      <section class="screen" data-screen="search-results">
+        <div class="topbar">
+          <button class="icon-btn" onclick="goBack()" aria-label="Orqaga qaytish">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <h2>Natijalar</h2>
+          <div class="spacer"></div>
+          <button class="icon-btn" id="view-toggle-btn" onclick="toggleResultsView()" aria-label="Ko'rinishni almashtirish">
+            <svg id="view-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          </button>
+          <button class="icon-btn" id="sort-btn" onclick="openSortSheet()" aria-label="Saralash">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+          </button>
+        </div>
+        <div class="screen-content gap-12 pt-12" id="results-list"></div>
+      </section>
+
+      <!-- Sort bottom-sheet: mustaqil, yengil komponent — region-sheet'dan
+           ataylab ajratilgan (u search/highlight bilan tightly-coupled,
+           bu yerda faqat 3 ta statik variant, murakkab qidiruv shart emas).
+           Vizual til (.sheet-item, .sheet-item-check) mavjud pattern bilan bir xil. -->
+      <div class="sheet-backdrop" id="sort-sheet-backdrop" onclick="closeSortSheet()" aria-hidden="true"></div>
+      <div class="sheet" id="sort-sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header">
+          <div class="h2" id="sort-sheet-title">Saralash</div>
+        </div>
+        <div class="sheet-list" id="sort-sheet-list"></div>
+      </div>
+
+      <!-- ============================================
+           13. ISHCHI PROFILI
+      ============================================ -->
+      <section class="screen" data-screen="worker-detail">
+        <div class="topbar">
+          <button class="icon-btn" onclick="goBack()" aria-label="Orqaga qaytish">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+          </button>
+        </div>
+        <div class="screen-content gap-24 pt-8" id="worker-detail-content"></div>
+        <div class="screen-fixed-bottom">
+          <div class="worker-detail-actions">
+            <button class="btn btn-secondary btn-icon-square" id="worker-message-btn" aria-label="Xabar yozish">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </button>
+            <button class="btn btn-primary" id="worker-call-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Qo'ng'iroq qilish</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================
+           14. MENING PROFILIM
+      ============================================ -->
+      <section class="screen" data-screen="profile">
+        <div class="topbar">
+          <h2>Mening profilim</h2>
+          <div class="spacer"></div>
+          <button class="icon-btn" id="edit-profile-btn" onclick="editProfile()" aria-label="Profilni tahrirlash">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+          </button>
+        </div>
+        <div class="screen-content gap-16 pt-16" id="profile-content"></div>
+        <div class="screen-fixed-bottom">
+          <button class="btn btn-secondary" onclick="logout()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg> Chiqish</button>
+        </div>
+        <div class="tab-bar"></div>
+      </section>
+
+    </div><!-- /viewport -->
+    <div class="toast-container" id="toast-container"></div>
+    <div class="landscape-block" role="alert">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2" transform="rotate(90 12 12)"/><path d="M12 2l0 3M12 19l0 3" opacity="0"/><path d="M7 17l-2 2M17 17l2 2" /></svg>
+      <p class="h2">Telefonni tik tuting</p>
+      <p class="body text-measure-sm">Ilova faqat portret (vertikal) rejimda ishlaydi</p>
+    </div>
+  </div><!-- /device -->
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
