@@ -402,6 +402,32 @@
         </div>
       </section>
 
+      <!-- Telefon OTP (Telegram / demo) -->
+      <section class="screen" data-screen="reg-otp">
+        <div class="topbar">
+          <button class="icon-btn" onclick="goBack()" aria-label="Orqaga qaytish">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div class="spacer"></div>
+        </div>
+        <div class="screen-content gap-24 pt-24">
+          <div class="gap-8">
+            <div class="h1">Tasdiqlash kodi</div>
+            <div class="body" id="reg-otp-hint">Kod Telegram orqali yuborildi</div>
+          </div>
+          <div class="field field--float" id="field-reg-otp">
+            <input class="input" type="text" inputmode="numeric" placeholder=" " id="reg-otp-field" autocomplete="one-time-code" maxlength="6" oninput="checkRegOtp()">
+            <label class="field-label" for="reg-otp-field">6 xonali kod</label>
+            <div class="field-error" id="reg-otp-error">Kodni kiriting</div>
+          </div>
+          <div class="body" id="reg-otp-demo" style="display:none;font-size:13px;opacity:0.85;"></div>
+          <button type="button" class="btn btn-text is-centered" id="reg-otp-resend-btn" onclick="resendRegOtp()">Kodni qayta yuborish</button>
+        </div>
+        <div class="screen-fixed-bottom">
+          <button class="btn btn-primary is-disabled" id="reg-otp-next-btn" onclick="submitRegOtp()">Tasdiqlash</button>
+        </div>
+      </section>
+
       <!-- Mavjud hisob: davom etish yoki boshqa role ochish -->
       <section class="screen" data-screen="reg-existing-choice">
         <div class="topbar">

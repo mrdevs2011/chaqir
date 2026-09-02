@@ -119,6 +119,14 @@ const ChaqirAPI = {
   loginTelegram(initData) {
     return apiRequest('/api/auth/telegram', { method: 'POST', body: JSON.stringify({ initData }) });
   },
+  sendOtp(phone, telegram_id) {
+    const body = { phone };
+    if (telegram_id) body.telegram_id = telegram_id;
+    return apiRequest('/api/auth/otp/send', { method: 'POST', body: JSON.stringify(body) });
+  },
+  verifyOtp(phone, code) {
+    return apiRequest('/api/auth/otp/verify', { method: 'POST', body: JSON.stringify({ phone, code }) });
+  },
   loginPassword(phone, password, userId) {
     const body = { phone, password };
     if (userId != null && userId !== '') body.userId = userId;

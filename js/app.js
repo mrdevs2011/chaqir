@@ -1231,6 +1231,127 @@ function fullPhoneFromDigits(digits) {
   return '+998' + d.slice(0, 9);
 }
 
+
+function getTelegramIdForOtp() {
+  try {
+    const tg = getTg();
+    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+      return String(tg.initDataUnsafe.user.id);
+    }
+  } catch (e) {}
+  return null;
+}
+
+async function sendAndShowRegOtp(phone) {
+  const tgId = getTelegramIdForOtp();
+  const res = await ChaqirAPI.sendOtp(phone, tgId);
+  appState._phoneVerified = false;
+  const hint = document.getElementById('reg-otp-hint');
+  const demo = document.getElementById('reg-otp-demo');
+  const field = document.getElementById('reg-otp-field');
+  if (field) field.value = '';
+  checkRegOtp();
+  if (res && res.channel === 'telegram') {
+    if (hint) hint.textContent = 'Kod Telegram hisobingizga yuborildi. 5 daqiqa ichida kiriting.';
+    if (demo) { demo.style.display = 'none'; demo.textContent = ''; }
+  } else {
+    if (hint) hint.textContent = 'Telegramga yuborib bo\'lmadi (bot/token yoki hisob topilmadi). Demo rejim: kod pastda.';
+    if (demo) {
+      demo.style.display = 'block';
+      demo.textContent = res && res.demoCode
+        ? ('Demo kod: ' + res.demoCode)
+        : 'Kod server logida. Keyinroq SMS ulanadi.';
+    }
+  }
+  if (res && res.message) showToast(res.message, res.channel === 'telegram' ? 'success' : 'info');
+  go('reg-otp');
+}
+
+function checkRegOtp() {
+  const el = document.getElementById('reg-otp-field');
+  const code = el ? el.value.replace(/\D/g, '') : '';
+  if (el && el.value !== code) el.value = code;
+  const ok = code.length === 6;
+  const btn = document.getElementById('reg-otp-next-btn');
+  if (btn) btn.classList.toggle('is-disabled', !ok);
+  clearFieldError('field-reg-otp');
+}
+
+async function resendRegOtp() {
+  if (!appState.phone) return;
+  const btn = document.getElementById('reg-otp-resend-btn');
+  if (btn) btn.classList.add('is-disabled');
+  try {
+    await sendAndShowRegOtp(appState.phone);
+  } catch (e) {
+    showToast(e.message || 'Qayta yuborib bo\'lmadi', 'error');
+    haptic.error();
+  } finally {
+    if (btn) setTimeout(() => btn.classList.remove('is-disabled'), 1500);
+  }
+}
+
+async function submitRegOtp() {
+  const el = document.getElementById('reg-otp-field');
+  const code = el ? el.value.replace(/\D/g, '') : '';
+  if (code.length !== 6) {
+    setFieldError('field-reg-otp');
+    return;
+  }
+  const btn = document.getElementById('reg-otp-next-btn');
+  if (btn) btn.classList.add('is-disabled');
+  try {
+    await ChaqirAPI.verifyOtp(appState.phone, code);
+    appState._phoneVerified = true;
+    showToast('Raqam tasdiqlandi', 'success');
+    continueAfterPhoneOtp();
+  } catch (e) {
+    setFieldError('field-reg-otp');
+    showToast(e.message || 'Kod noto\'g\'ri', 'error');
+    haptic.error();
+  } finally {
+    if (btn) {
+      btn.classList.remove('is-disabled');
+      checkRegOtp();
+    }
+  }
+}
+
+function continueAfterPhoneOtp() {
+  const status = appState._pendingPhoneStatus;
+  const roles = (status && Array.isArray(status.roles)) ? status.roles : [];
+  const accounts = (status && Array.isArray(status.accounts)) ? status.accounts : [];
+  appState._phoneAccounts = accounts;
+  appState._phoneRoles = roles;
+
+  if (roles.length === 0) {
+    go('role-select');
+    return;
+  }
+  if (roles.length >= 2) {
+    showToast('Bu raqamda ikkala hisob ham bor. Kirish orqali davom eting.', 'info');
+    const loginPhone = document.getElementById('login-phone-field');
+    if (loginPhone && appState.phone) {
+      const d = String(appState.phone).replace(/\D/g, '');
+      const local = d.startsWith('998') ? d.slice(3) : d;
+      let formatted = local.slice(0, 9);
+      if (formatted.length > 7) {
+        formatted = formatted.slice(0, 2) + ' ' + formatted.slice(2, 5) + ' ' + formatted.slice(5, 7) + ' ' + formatted.slice(7);
+      } else if (formatted.length > 5) {
+        formatted = formatted.slice(0, 2) + ' ' + formatted.slice(2, 5) + ' ' + formatted.slice(5);
+      } else if (formatted.length > 2) {
+        formatted = formatted.slice(0, 2) + ' ' + formatted.slice(2);
+      }
+      loginPhone.value = formatted;
+      checkLoginPhone();
+    }
+    go('login-manual-phone');
+    return;
+  }
+  renderRegExistingChoice(roles[0], accounts);
+  go('reg-existing-choice');
+}
+
 function checkManualPhone() {
   const digits = getPhoneDigits('manual-phone-field');
   const phoneOk = digits.length === 9;
@@ -1267,40 +1388,12 @@ async function submitManualPhone() {
       hasPassword = false;
     }
     appState._phoneHasPassword = hasPassword;
+    appState._pendingPhoneStatus = status;
 
-    // 1) Ro'yxatdan o'tish BOSHI: telefon → mavjud hisob / "Siz kimsiz?"
+    // 1) Ro'yxatdan o'tish BOSHI: telefon → OTP (Telegram/demo) → keyin rol/hisob
     if (appState._phoneFirstReg || !appState.name) {
       appState._phoneFirstReg = true;
-      const roles = (status && Array.isArray(status.roles)) ? status.roles : [];
-      const accounts = (status && Array.isArray(status.accounts)) ? status.accounts : [];
-      appState._phoneAccounts = accounts;
-      appState._phoneRoles = roles;
-
-      if (roles.length === 0) {
-        // Umuman hisob yo'q → rol tanlash
-        go('role-select');
-        return;
-      }
-      if (roles.length >= 2) {
-        // Ikkala role ham bor → kirishga yo'naltiramiz
-        showToast('Bu raqamda ikkala hisob ham bor. Kirish orqali davom eting.', 'info');
-        // Login telefon maydonini to'ldiramiz
-        const loginPhone = document.getElementById('login-phone-field');
-        if (loginPhone) {
-          const d = getPhoneDigits('manual-phone-field');
-          let formatted = d;
-          if (d.length > 7) formatted = d.slice(0, 2) + ' ' + d.slice(2, 5) + ' ' + d.slice(5, 7) + ' ' + d.slice(7);
-          else if (d.length > 5) formatted = d.slice(0, 2) + ' ' + d.slice(2, 5) + ' ' + d.slice(5);
-          else if (d.length > 2) formatted = d.slice(0, 2) + ' ' + d.slice(2);
-          loginPhone.value = formatted;
-          checkLoginPhone();
-        }
-        go('login-manual-phone');
-        return;
-      }
-      // Faqat 1 ta role → tanlov ekrani
-      renderRegExistingChoice(roles[0], accounts);
-      go('reg-existing-choice');
+      await sendAndShowRegOtp(phone);
       return;
     }
 
