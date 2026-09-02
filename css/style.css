@@ -218,70 +218,34 @@ html, body {
 button { font-family: inherit; }
 
 /* ============================================================
-   Layout — to'liq responsive (web + Telegram).
-   Telefon frame o'chirilgan; ilova viewportni to'ldiradi.
+   Layout — scope/device-shell YO'Q. Faqat to'liq viewport.
 ============================================================ */
 html, body {
   margin: 0;
   padding: 0;
-  min-height: 100%;
+  width: 100%;
+  height: 100%;
   min-height: 100dvh;
   background: var(--color-bg);
   overscroll-behavior: none;
 }
 
-.device-shell {
-  min-height: 100%;
-  min-height: 100dvh;
-  display: flex;
-  align-items: stretch;
-  justify-content: stretch;
-  padding: 0;
-}
-
-.device {
-  position: relative;
-  width: 100%;
-  max-width: 100%;
-  height: 100dvh;
-  max-height: 100dvh;
-  margin: 0 auto;
-  background: var(--color-bg);
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  overflow: hidden;
-}
-
-/* Keng desktop: kontent o'qish uchun markaziy ustun (ixtiyoriy max) */
-@media (min-width: 768px) {
-  .device {
-    max-width: 480px;
-    box-shadow: 0 0 0 1px rgba(0,0,0,0.06);
-  }
-  body {
-    background: var(--color-bg-muted, #0c0e12);
-  }
-}
-
-.device-notch {
-  display: none;
-}
-
 .screens-viewport {
   position: relative;
   width: 100%;
-  height: 100%;
+  height: 100dvh;
+  max-height: var(--vvh, 100dvh);
   overflow: hidden;
+  background: var(--color-bg);
 }
 
-/* Telegram Mini App — xuddi shu to'liq ekran */
-html.tg-mini-app .device {
-  max-width: 100%;
-  box-shadow: none;
+/* Eski classlar qolsa ham zararsiz no-op */
+.device-shell,
+.device {
+  display: contents;
 }
-html.tg-mini-app body {
-  background: var(--color-bg);
+.device-notch {
+  display: none !important;
 }
 
 /* ============================================================
@@ -993,7 +957,7 @@ html.tg-mini-app body {
 
 /* 2.3 — Keyboard layout: visualViewport height sync */
 :root { --vvh: 100dvh; }
-.device {
+.screens-viewport {
   height: var(--vvh, 100dvh);
   max-height: var(--vvh, 100dvh);
 }
@@ -1082,34 +1046,40 @@ html.tg-mini-app body {
   .chip-check { transition: none; }
 }
 
-/* Skill grid variant — 2 ustunli, kvadrat kartalar (onboarding) */
+/* Skill grid — 2 ustun, ixcham kartalar (kvadrat emas — stretched emas) */
 .chip-group-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 10px;
 }
 .chip-group-grid .chip {
   flex-direction: column;
   justify-content: center;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
   width: 100%;
-  aspect-ratio: 1 / 1;
-  border-radius: 16px;
-  padding: 16px;
+  aspect-ratio: auto;
+  min-height: 72px;
+  max-height: 96px;
+  height: auto;
+  border-radius: 14px;
+  padding: 12px 8px;
   text-align: center;
 }
 .chip-group-grid .chip svg {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
 }
 .chip-group-grid .chip span {
-  font-size: var(--text-base);
+  font-size: 13px;
+  line-height: 1.25;
 }
 
 /* 2.4 — Scroll wrap + fade-edge */
 .chip-scroll-wrap {
   position: relative;
-  max-height: min(420px, 52vh);
+  max-height: min(340px, 45vh);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   margin: 0 -4px;
