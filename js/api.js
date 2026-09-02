@@ -170,5 +170,25 @@ const ChaqirAPI = {
   // Suhbatni o'qilgan deb belgilash (unread hisoblagich uchun)
   markConversationRead(conversationId) {
     return apiRequest(`/api/conversations/${conversationId}/read`, { method: 'POST' });
+  },
+
+  // ---- Profile / portfolio / reviews ----
+  updateMe(data) {
+    return apiRequest('/api/me', { method: 'PATCH', body: JSON.stringify(data) });
+  },
+  addPortfolio(workerId, { url, caption }) {
+    return apiRequest(`/api/workers/${workerId}/portfolio`, {
+      method: 'POST',
+      body: JSON.stringify({ url, caption })
+    });
+  },
+  removePortfolio(workerId, itemId) {
+    return apiRequest(`/api/workers/${workerId}/portfolio/${itemId}`, { method: 'DELETE' });
+  },
+  addReview(workerId, { rating, text }) {
+    return apiRequest(`/api/workers/${workerId}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify({ rating, text })
+    });
   }
 };

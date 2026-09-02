@@ -250,6 +250,8 @@ function renderTabBar(activeScreenId) {
 }
 
 function renderScreen(screenId, direction) {
+  // Chatdan chiqilganda polling to'xtaydi
+  if (screenId !== 'chat-detail') stopChatPolling();
   // MANTIQ (3.1 roadmap punkti): oldin hammasi bitta "screen-in"
   // animatsiyaga ega edi — forward (go), back (goBack) va tab
   // almashish (switchTab) farqlanmasdi. Endi yo'nalish CSS class
@@ -299,7 +301,6 @@ function cancelFlow() {
   // To'liq reset — ro'yxatdan o'tish jarayonidan chiqib ketish
   appState = { id: null, token: null, role: null, name: '', skills: [], region: null, district: null, mahalla: null, address: '', phone: null, favorites: [] };
   screenHistory = [];
-  searchAttemptCount = 0; // demo error-simulyatsiya hisoblagichi ham tozalanadi
   renderScreen('onboarding', 'back'); // flow'dan chiqish
 
 }
@@ -1120,8 +1121,7 @@ function sharePhone() {
       const done = (ok) => {
         if (ok) {
           applyTelegramUserDefaults();
-          if (!appState.phone) appState.phone = '+998901112233';
-          finishRegistration();
+                    finishRegistration();
         } else {
           showToast('Raqam ulashilmadi — qo\'lda kiriting', 'info');
         }
@@ -1145,8 +1145,7 @@ function sharePhone() {
     }
   }
   applyTelegramUserDefaults();
-  if (!appState.phone) appState.phone = '+998901112233';
-  finishRegistration();
+    finishRegistration();
 }
 
 function checkManualPhone() {
@@ -1285,6 +1284,9 @@ function applyAuthUser(user, token) {
   appState.district = user.district;
   appState.mahalla = user.mahalla;
   appState.address = user.address;
+  appState.rating = user.rating || 0;
+  appState.reviewCount = user.reviewCount || 0;
+  if (user.skills) appState.skills = user.skills;
 }
 
 async function tryLoginByTelegram() {
@@ -1319,8 +1321,7 @@ async function tryLoginByPassword(phone, password) {
 
 async function loginShare() {
   applyTelegramUserDefaults();
-  if (!appState.phone) appState.phone = '+998901112233';
-
+  
   // Avval Telegram initData orqali haqiqiy auth
   if (await tryLoginByTelegram()) {
     await goHome();
@@ -1427,7 +1428,7 @@ function switchTab(tabName) {
   renderScreen(targetScreen, 'fade');
 }
 
-function renderHome() {
+async function renderHome() {
   const initial = (appState.name || 'F').trim().charAt(0).toUpperCase();
   document.getElementById('home-avatar').textContent = initial;
   document.getElementById('home-name').textContent = appState.name || 'Foydalanuvchi';
@@ -1436,17 +1437,20 @@ function renderHome() {
   document.getElementById('home-employer-block').style.display = appState.role === 'employer' ? 'block' : 'none';
   document.getElementById('home-worker-block').style.display = appState.role === 'worker' ? 'block' : 'none';
 
-  // MANTIQ: employer kirishi bilan (Uzum Market kabi) tavsiya feed'i
-  // darhol ko'rinadi — qidiruv filtrini kutmasdan. Bu real backend'da
-  // GET /api/workers?recommended=true so'roviga aylanadi, shuning
-  // uchun bu yerda ham skeleton + sun'iy kechikish bilan simulyatsiya
-  // qilinadi (runSearch bilan bir xil mantiq).
+  // Employer feed — har safar backenddan
   if (appState.role === 'employer') {
     const grid = document.getElementById('home-worker-feed');
     renderFeedCardSkeletons(grid, 4);
-    setTimeout(() => {
+    try {
+      const workers = await ChaqirAPI.getWorkers();
+      MOCK_WORKERS = workers;
       if (currentScreen === 'home') renderHomeFeed();
-    }, 500);
+    } catch (e) {
+      if (currentScreen === 'home') {
+        grid.innerHTML = '';
+        showToast(e.message || 'Ishchilar yuklanmadi', 'error');
+      }
+    }
   }
 }
 
@@ -1528,8 +1532,6 @@ function renderAvatar(worker, sizeClass = '') {
 // XAVFSIZLIK: clientName/skill/mahalla/date escapeHtml() orqali
 // o'tadi — bular kelajakda real mijoz kiritgan matn bo'ladi.
 // ------------------------------------------------------------
-const ORDERS_SIMULATED_DELAY = 450;
-
 async function renderWorkerOrders() {
   const list = document.getElementById('worker-orders-list');
   if (!list) return;
@@ -1604,12 +1606,25 @@ function renderOrderStatusBadge(status) {
 // e'tiborsiz qoldiriladi.
 async function logout() {
   try { if (appState.token) await ChaqirAPI.logout(); } catch (e) { /* baribir chiqamiz */ }
+  // Mahalliy holatni tozalash
   setStoredToken(null);
+  try {
+    localStorage.removeItem('chaqir-token');
+  } catch (e) { /* ignore */ }
   appState = { id: null, token: null, role: null, name: '', skills: [], region: null, district: null, mahalla: null, address: '', phone: null, favorites: [] };
   searchFilterState = { skills: [], region: null, district: null };
   screenHistory = [];
-  searchAttemptCount = 0; // demo error-simulyatsiya hisoblagichi ham tozalanadi
-  renderScreen('onboarding', 'back'); // chiqish — "orqaga" hissi to'g'ri
+  stopChatPolling();
+
+  // Hard refresh — brauzer va Telegram Mini App WebView da ham toza start
+  try {
+    const u = new URL(window.location.href);
+    u.hash = '';
+    u.searchParams.set('_logout', String(Date.now()));
+    window.location.replace(u.toString());
+  } catch (e) {
+    window.location.reload();
+  }
 }
 
 // ------------------------------------------------------------
@@ -1700,13 +1715,9 @@ let lastSearchResults = [];
 // skeleton ko'rsatamiz. Bu foydalanuvchini "productionda sekinroq
 // bo'ladi" degan haqiqatga tayyorlaydi — hozirgi "hammasi
 // bir zumda paydo bo'ladi" demo hissi yolg'on va yomon o'rgatadi.
-const SEARCH_SIMULATED_DELAY = 600;
-
 // Demo maqsadida: har 6-qidiruvdan 1 tasi xato holatini ko'rsatadi,
 // shunda error-state ham ko'rinadi (aks holda hech kim uni
 // ko'rmaydi, chunki mock data hech qachon "xato" bermaydi).
-let searchAttemptCount = 0;
-
 // 2.10: filter predicate runSearch() va natija-preview'da (pastda)
 // ikkalasida ham kerak — bitta joyga chiqarildi, ikki marta
 // yozilmasin.
@@ -1720,30 +1731,30 @@ function getFilteredWorkers() {
   });
 }
 
-function runSearch() {
+async function runSearch() {
   go('search-results');
   const list = document.getElementById('results-list');
   renderWorkerCardSkeletons(list, 4);
 
-  searchAttemptCount++;
-  const shouldSimulateError = searchAttemptCount % 6 === 0;
-
-  setTimeout(() => {
-    if (currentScreen !== 'search-results') return; // foydalanuvchi allaqachon boshqa ekranga o'tgan bo'lsa, render qilmaymiz
-
-    if (shouldSimulateError) {
-      renderEmptyState(list, {
-        variant: 'error',
-        title: 'Qidiruvni bajarib bo\'lmadi',
-        body: 'Internet aloqasi yoki serverda muammo bo\'lishi mumkin',
-        onAction: () => runSearch()
-      });
-      return;
-    }
-
-    lastSearchResults = getFilteredWorkers();
+  try {
+    const workers = await ChaqirAPI.getWorkers({
+      skills: searchFilterState.skills,
+      region: searchFilterState.region || undefined,
+      district: searchFilterState.district || undefined
+    });
+    MOCK_WORKERS = workers;
+    if (currentScreen !== 'search-results') return;
+    lastSearchResults = workers;
     renderResults();
-  }, SEARCH_SIMULATED_DELAY);
+  } catch (e) {
+    if (currentScreen !== 'search-results') return;
+    renderEmptyState(list, {
+      variant: 'error',
+      title: "Qidiruvni bajarib bo'lmadi",
+      body: (e && e.message) || 'Internet yoki serverda muammo',
+      onAction: () => runSearch()
+    });
+  }
 }
 
 // ------------------------------------------------------------
@@ -1804,7 +1815,8 @@ function applySortToResults() {
   // 'default' — asl runSearch() tartibiga qaytarish uchun qayta filtrlaymiz
   // (getFilteredWorkers() MOCK_WORKERS asl ketma-ketligini saqlaydi)
   else {
-    lastSearchResults = getFilteredWorkers();
+    // Standart tartib — oxirgi API javobi (MOCK_WORKERS kesh)
+    lastSearchResults = MOCK_WORKERS.slice();
   }
 }
 
@@ -2197,6 +2209,11 @@ function renderReviewsSection(worker) {
   const reviews = worker.reviews || [];
   const starSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
 
+  const canReview = appState.role === 'employer' && appState.token && appState.id !== worker.id;
+  const reviewBtn = canReview
+    ? `<button class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="openReviewSheet(${worker.id})">Sharh yozish</button>`
+    : '';
+
   if (reviews.length === 0) {
     return `
       <div class="detail-row">
@@ -2204,7 +2221,8 @@ function renderReviewsSection(worker) {
       </div>
       <div class="empty-state empty-state--compact">
         <div class="body">Hali sharh yo'q — birinchilardan bo'ling!</div>
-      </div>`;
+      </div>
+      ${reviewBtn}`;
   }
 
   const cards = reviews.map(r => {
@@ -2228,14 +2246,92 @@ function renderReviewsSection(worker) {
     <div class="detail-row">
       <div class="detail-row-label">SHARHLAR (${reviews.length})</div>
     </div>
-    <div class="reviews-list">${cards}</div>`;
+    <div class="reviews-list">${cards}</div>
+    ${reviewBtn}`;
+}
+
+let pendingReviewWorkerId = null;
+
+function openReviewSheet(workerId) {
+  pendingReviewWorkerId = workerId;
+  document.getElementById('review-text-field').value = '';
+  document.getElementById('review-rating-field').value = '5';
+  document.getElementById('review-sheet').classList.add('open');
+  document.getElementById('review-sheet-backdrop').classList.add('open');
+}
+
+function closeReviewSheet() {
+  document.getElementById('review-sheet').classList.remove('open');
+  document.getElementById('review-sheet-backdrop').classList.remove('open');
+  pendingReviewWorkerId = null;
+}
+
+async function submitReview() {
+  if (!pendingReviewWorkerId) return;
+  const workerId = pendingReviewWorkerId;
+  const rating = Number(document.getElementById('review-rating-field').value);
+  const textVal = document.getElementById('review-text-field').value.trim();
+  try {
+    await ChaqirAPI.addReview(workerId, { rating, text: textVal });
+    showToast('Sharh yuborildi', 'success');
+    haptic.success();
+    closeReviewSheet();
+    const worker = await ChaqirAPI.getWorker(workerId).catch(() => null);
+    if (worker) {
+      const idx = MOCK_WORKERS.findIndex(w => w.id === worker.id);
+      if (idx !== -1) MOCK_WORKERS[idx] = worker;
+      openWorkerDetailFromList(worker);
+    }
+  } catch (e) {
+    showToast(e.message || 'Sharh yuborilmadi', 'error');
+  }
+}
+
+function openPortfolioSheet() {
+  if (!appState.id || appState.role !== 'worker') {
+    showToast("Faqat ishchi portfolio qo'sha oladi", 'info');
+    return;
+  }
+  document.getElementById('portfolio-url-field').value = '';
+  document.getElementById('portfolio-caption-field').value = '';
+  document.getElementById('portfolio-sheet').classList.add('open');
+  document.getElementById('portfolio-sheet-backdrop').classList.add('open');
+}
+
+function closePortfolioSheet() {
+  document.getElementById('portfolio-sheet').classList.remove('open');
+  document.getElementById('portfolio-sheet-backdrop').classList.remove('open');
+}
+
+async function submitPortfolio() {
+  const url = document.getElementById('portfolio-url-field').value.trim();
+  const caption = document.getElementById('portfolio-caption-field').value.trim();
+  if (!url) {
+    showToast('Rasm URL kiriting', 'error');
+    return;
+  }
+  try {
+    await ChaqirAPI.addPortfolio(appState.id, { url, caption });
+    showToast("Portfolio ga qo'shildi", 'success');
+    haptic.success();
+    closePortfolioSheet();
+  } catch (e) {
+    showToast(e.message || "Qo'shilmadi", 'error');
+  }
 }
 
 function callWorker(worker) {
-  // MOCK: real qo'ng'iroq yo'q, faqat demo signal.
-  // Ilgari bu alert() edi — SPA oqimini to'xtatib qo'yardi va
-  // "web 1.0" hissi berardi. Endi toast — non-blocking, o'zi ketadi.
-  showToast(`Qo'ng'iroq: ${worker.name} — ${worker.phone}`, 'success');
+  if (!worker || !worker.phone) {
+    showToast("Telefon raqami yo'q", 'error');
+    return;
+  }
+  const phone = String(worker.phone).replace(/[^\d+]/g, '');
+  if (!phone) {
+    showToast("Telefon raqami noto'g'ri", 'error');
+    return;
+  }
+  // Haqiqiy telefon qo'ng'irog'i (mobil / Telegram WebView tel: handler)
+  window.location.href = `tel:${phone}`;
 }
 
 // 2.12 — "Bog'lanish" tugmalarini kengaytirish: xabar yozish UI'si.
@@ -2451,16 +2547,46 @@ async function renderMessages() {
 // sifatida qaraladi — escapeHtml() SHART (Bo'lim 4 izohi bilan bir xil
 // qoida).
 // ------------------------------------------------------------
+let chatPollTimer = null;
+
+function stopChatPolling() {
+  if (chatPollTimer) {
+    clearInterval(chatPollTimer);
+    chatPollTimer = null;
+  }
+}
+
+function startChatPolling() {
+  stopChatPolling();
+  chatPollTimer = setInterval(async () => {
+    if (currentScreen !== 'chat-detail' || !currentChatConversation || !appState.token) {
+      stopChatPolling();
+      return;
+    }
+    try {
+      await refreshConversations();
+      const fresh = MOCK_CONVERSATIONS.find(c => c.id === currentChatConversation.id);
+      if (!fresh) return;
+      const prevLen = currentChatConversation.messages.length;
+      currentChatConversation = fresh;
+      if (fresh.messages.length !== prevLen && currentScreen === 'chat-detail') {
+        renderChat();
+      }
+      ChaqirAPI.markConversationRead(fresh.id).catch(() => {});
+    } catch (e) { /* jim */ }
+  }, 3000);
+}
+
 function openChat(conversationId) {
   const conv = MOCK_CONVERSATIONS.find(c => c.id === conversationId);
   if (!conv) return;
   currentChatConversation = conv;
-  conv.unreadCount = 0; // UI darhol yangilanadi
+  conv.unreadCount = 0;
   go('chat-detail');
-  // Backendga ham o'qilgan deb yozamiz (keyingi refresh'da badge yo'qoladi)
   if (appState.token) {
     ChaqirAPI.markConversationRead(conversationId).catch(() => {});
   }
+  startChatPolling();
 }
 
 function renderChat() {
@@ -2498,9 +2624,11 @@ function sendChatMessage() {
   haptic.light();
   renderChat();
 
-  if (!appState.id) {
-    // id yo'q (mock login) — backend'ga yozib bo'lmaydi, faqat local
-    setTimeout(() => { msg.pending = false; if (currentScreen === 'chat-detail') renderChat(); }, 400);
+  if (!appState.id || !appState.token) {
+    const idx = currentChatConversation.messages.indexOf(msg);
+    if (idx !== -1) currentChatConversation.messages.splice(idx, 1);
+    if (currentScreen === 'chat-detail') renderChat();
+    showToast("Xabar yuborish uchun kiring", 'error');
     return;
   }
 
@@ -2553,7 +2681,64 @@ function toggleTheme() {
 // pattern qo'llanildi — yangi, izchil bo'lmagan flow o'ylab
 // topmadim.
 function editProfile() {
-  showToast('Profilni tahrirlash (tez orada)', 'info');
+  if (!appState.id || !appState.token) {
+    showToast("Tahrirlash uchun kiring", 'info');
+    return;
+  }
+  openProfileEditSheet();
+}
+
+function openProfileEditSheet() {
+  document.getElementById('edit-name-field').value = appState.name || '';
+  document.getElementById('edit-phone-field').value = appState.phone || '';
+  document.getElementById('edit-address-field').value = appState.address || '';
+  document.getElementById('edit-mahalla-field').value = appState.mahalla || '';
+  document.getElementById('edit-password-field').value = '';
+  document.getElementById('edit-profile-sheet').classList.add('open');
+  document.getElementById('edit-profile-sheet-backdrop').classList.add('open');
+}
+
+function closeProfileEditSheet() {
+  document.getElementById('edit-profile-sheet').classList.remove('open');
+  document.getElementById('edit-profile-sheet-backdrop').classList.remove('open');
+}
+
+async function submitProfileEdit() {
+  const name = document.getElementById('edit-name-field').value.trim();
+  const phone = document.getElementById('edit-phone-field').value.trim();
+  const address = document.getElementById('edit-address-field').value.trim();
+  const mahalla = document.getElementById('edit-mahalla-field').value.trim();
+  const password = document.getElementById('edit-password-field').value;
+  if (!name || phone.length < 9) {
+    showToast("Ism va telefon majburiy", 'error');
+    return;
+  }
+  const payload = {
+    name,
+    phone,
+    address,
+    mahalla: mahalla || appState.mahalla,
+    region: appState.region,
+    district: appState.district
+  };
+  if (password) payload.password = password;
+  if (appState.role === 'worker') payload.skills = appState.skills;
+  try {
+    const user = await ChaqirAPI.updateMe(payload);
+    appState.name = user.name;
+    appState.phone = user.phone;
+    appState.address = user.address || '';
+    appState.mahalla = user.mahalla;
+    appState.region = user.region;
+    appState.district = user.district;
+    if (user.skills) appState.skills = user.skills;
+    showToast("Profil yangilandi", 'success');
+    haptic.success();
+    closeProfileEditSheet();
+    renderProfile();
+  } catch (e) {
+    showToast(e.message || "Saqlanmadi", 'error');
+  }
 }
 
 const PROFILE_ROW_ICONS = {
@@ -2590,12 +2775,12 @@ function renderProfile() {
     <div class="profile-stats-grid">
       <div class="profile-stat-card">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-        <div class="profile-stat-value">47</div>
-        <div class="profile-stat-label">Marta ko'rilgan</div>
+        <div class="profile-stat-value">${Number(appState.rating || 0).toFixed(1)}</div>
+        <div class="profile-stat-label">Reyting</div>
       </div>
       <div class="profile-stat-card">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>
-        <div class="profile-stat-value">12</div>
+        <div class="profile-stat-value">${appState.reviewCount || 0}</div>
         <div class="profile-stat-label">Baho olingan</div>
       </div>
     </div>
@@ -2623,12 +2808,16 @@ function renderProfile() {
   // tushardi (o'z-o'ziga XSS). Endi barcha qatorlar (hatto xavfsiz manbalilar —
   // Rol/Hudud/Telefon fixed ro'yxat yoki raqamdan keladi) bir xilda escapeHtml()
   // orqali o'tadi — defense-in-depth, xavfsiz qiymatga ham zarar keltirmaydi.
+  const portfolioBtn = appState.role === 'worker' ? `
+    <button class="btn btn-secondary" style="width:100%;margin:8px 0;" onclick="openPortfolioSheet()">Portfolio ga rasm qo'shish</button>
+  ` : '';
+
   content.innerHTML = statsCard + themeRow + rows.map(([label, value]) => `
     <div class="profile-row">
       <span class="profile-row-label">${PROFILE_ROW_ICONS[label] || ''}${label}</span>
       <span class="profile-row-value${label === 'Telefon' ? ' profile-row-value--numeric' : ''}">${escapeHtml(String(value))}</span>
     </div>
-  `).join('');
+  `).join('') + portfolioBtn;
 }
 
 // ============================================================
@@ -2900,23 +3089,41 @@ async function restoreSession() {
     appState.district = user.district;
     appState.mahalla = user.mahalla;
     appState.address = user.address;
+    appState.rating = user.rating || 0;
+    appState.reviewCount = user.reviewCount || 0;
+    if (user.skills) appState.skills = user.skills;
     return true;
   } catch (e) {
     return false; // apiRequest() 401'da tokenni allaqachon tozaladi
   }
 }
 
+function revealApp() {
+  document.documentElement.classList.remove('session-booting');
+  document.documentElement.classList.add('boot-ready');
+}
+
 (async function boot() {
   initTelegramMiniApp();
   applyAbVariant();
-  await loadInitialData();
+
+  // Avval sessiya — token bo'lsa onboarding flashsiz home
   const restored = await restoreSession();
   if (restored) {
+    // Ma'lumotlarni parallel yuklash, UI ni darhol home qilish
+    const dataPromise = loadInitialData();
     await goHome();
+    revealApp();
+    await dataPromise;
+    // Home feed yangilansin (API dan)
+    if (currentScreen === 'home' && appState.role === 'employer') {
+      try { await renderHome(); } catch (e) { /* ignore */ }
+    }
   } else {
+    await loadInitialData();
     renderScreen(getStartScreen());
+    revealApp();
   }
-  // Telegram user ismi onboarding'dan oldin bo'lsa — state'ga
   applyTelegramUserDefaults();
 })();
 

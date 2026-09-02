@@ -1,6 +1,22 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
+
+<style id="boot-gate-style">
+  /* Token bo'lsa onboarding flash ko'rinmasin — boot tugaguncha yashirin */
+  html.session-booting .screens-viewport { visibility: hidden !important; }
+  html.session-booting body { background: var(--color-bg, #0f1115); }
+</style>
+<script>
+(function () {
+  try {
+    if (localStorage.getItem('chaqir-token')) {
+      document.documentElement.classList.add('session-booting');
+    }
+  } catch (e) {}
+})();
+</script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Chaqir — Telegram Mini App</title>
@@ -360,7 +376,6 @@
             <label class="field-label" for="login-password-field">Parol</label>
             <div class="field-error" id="login-password-error">Parolni kiriting (kamida 4 belgi)</div>
           </div>
-          <div class="body" style="opacity:0.7;font-size:13px;">Demo ishchilar: parol <strong>demo1234</strong></div>
         </div>
         <div class="screen-fixed-bottom">
           <button class="btn btn-primary is-disabled" id="login-phone-next-btn" onclick="loginManualSubmit()">Kirish</button>
@@ -478,7 +493,7 @@
            MANTIQ: Employer'ning "Qidiruv" ekraniga mos keladigan,
            lekin funksional jihatdan TESKARI ekran: bu yerda ishchi
            OʻZI qidirmaydi, unga kelgan mijoz so'rovlarini ko'radi.
-           Hozircha backend yo'q, shuning uchun MOCK_ORDERS ustida
+           Buyurtmalar backend API orqali yuklanadi
            xuddi search-results kabi skeleton -> data/bo'sh holat
            patterni qo'llaniladi (Bo'lim 4 komponentlari qayta
            ishlatiladi — yangi loading/error UI o'ylab topilmaydi).
@@ -630,6 +645,86 @@
         </div>
         <div class="tab-bar"></div>
       </section>
+
+
+      <!-- Profil tahrirlash -->
+      <div class="sheet-backdrop" id="edit-profile-sheet-backdrop" onclick="closeProfileEditSheet()" aria-hidden="true"></div>
+      <div class="sheet" id="edit-profile-sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header">
+          <div class="h2">Profilni tahrirlash</div>
+        </div>
+        <div class="sheet-list gap-12">
+          <div class="field field--float">
+            <input class="input" type="text" placeholder=" " id="edit-name-field" autocomplete="name">
+            <label class="field-label" for="edit-name-field">Ism</label>
+          </div>
+          <div class="field field--float">
+            <input class="input" type="tel" placeholder=" " id="edit-phone-field" inputmode="tel" autocomplete="tel">
+            <label class="field-label" for="edit-phone-field">Telefon</label>
+          </div>
+          <div class="field field--float">
+            <input class="input" type="text" placeholder=" " id="edit-mahalla-field" autocomplete="off">
+            <label class="field-label" for="edit-mahalla-field">Mahalla</label>
+          </div>
+          <div class="field field--float">
+            <input class="input" type="text" placeholder=" " id="edit-address-field" autocomplete="street-address">
+            <label class="field-label" for="edit-address-field">Manzil</label>
+          </div>
+          <div class="field field--float">
+            <input class="input" type="password" placeholder=" " id="edit-password-field" autocomplete="new-password">
+            <label class="field-label" for="edit-password-field">Yangi parol (ixtiyoriy)</label>
+          </div>
+          <button class="btn btn-primary" style="width:100%;" onclick="submitProfileEdit()">Saqlash</button>
+        </div>
+      </div>
+
+      <!-- Sharh yozish -->
+      <div class="sheet-backdrop" id="review-sheet-backdrop" onclick="closeReviewSheet()" aria-hidden="true"></div>
+      <div class="sheet" id="review-sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header">
+          <div class="h2">Sharh yozish</div>
+        </div>
+        <div class="sheet-list gap-12">
+          <div class="field field--float">
+            <select class="input" id="review-rating-field" style="padding-top:18px;">
+              <option value="5">5 — A'lo</option>
+              <option value="4">4 — Yaxshi</option>
+              <option value="3">3 — O'rtacha</option>
+              <option value="2">2 — Past</option>
+              <option value="1">1 — Yomon</option>
+            </select>
+            <label class="field-label" for="review-rating-field">Baholash</label>
+          </div>
+          <div class="field field--float">
+            <input class="input" type="text" placeholder=" " id="review-text-field" maxlength="300">
+            <label class="field-label" for="review-text-field">Izoh</label>
+          </div>
+          <button class="btn btn-primary" style="width:100%;" onclick="submitReview()">Yuborish</button>
+        </div>
+      </div>
+
+      <!-- Portfolio qo'shish -->
+      <div class="sheet-backdrop" id="portfolio-sheet-backdrop" onclick="closePortfolioSheet()" aria-hidden="true"></div>
+      <div class="sheet" id="portfolio-sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header">
+          <div class="h2">Portfolio ga rasm</div>
+          <div class="body">Rasmning to'liq https URL manzilini kiriting</div>
+        </div>
+        <div class="sheet-list gap-12">
+          <div class="field field--float">
+            <input class="input" type="url" placeholder=" " id="portfolio-url-field" autocomplete="off">
+            <label class="field-label" for="portfolio-url-field">Rasm URL</label>
+          </div>
+          <div class="field field--float">
+            <input class="input" type="text" placeholder=" " id="portfolio-caption-field" maxlength="120">
+            <label class="field-label" for="portfolio-caption-field">Izoh (ixtiyoriy)</label>
+          </div>
+          <button class="btn btn-primary" style="width:100%;" onclick="submitPortfolio()">Qo'shish</button>
+        </div>
+      </div>
 
     </div><!-- /viewport -->
     <div class="toast-container" id="toast-container"></div>
