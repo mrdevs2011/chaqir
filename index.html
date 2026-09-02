@@ -16,6 +16,22 @@
   } catch (e) {}
 })();
 </script>
+<script>
+/* Eski ?_logout=... URL qoldig'ini darhol tozalash */
+(function () {
+  try {
+    var u = new URL(window.location.href);
+    if (u.searchParams.has('_logout') || u.searchParams.has('transfer')) {
+      // transfer alohida skriptda yutiladi; faqat _logout ni shu yerda olib tashlaymiz
+      if (u.searchParams.has('_logout') && !u.searchParams.has('transfer')) {
+        u.searchParams.delete('_logout');
+        var q = u.searchParams.toString();
+        window.history.replaceState({}, '', u.pathname + (q ? '?' + q : '') + u.hash);
+      }
+    }
+  } catch (e) {}
+})();
+</script>
 
 <script>
 /* Transfer: URL dagi kodni inson nusxa olishidan OLDIN yutish.

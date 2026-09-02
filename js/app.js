@@ -1651,14 +1651,11 @@ async function logout() {
   screenHistory = [];
   stopChatPolling();
 
-  // Hard refresh — brauzer va Telegram Mini App WebView da ham toza start
+  // Hard refresh — toza asosiy URL (query/hash yo'q)
   try {
-    const u = new URL(window.location.href);
-    u.hash = '';
-    u.searchParams.set('_logout', String(Date.now()));
-    window.location.replace(u.toString());
+    window.location.replace(window.location.origin + window.location.pathname);
   } catch (e) {
-    window.location.reload();
+    window.location.href = window.location.pathname;
   }
 }
 
