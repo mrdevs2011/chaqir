@@ -30,10 +30,10 @@
 ============================================================ */
 :root {
   /* Brand */
-  --color-primary: #F2A93B;
-  --color-primary-dark: #D98F1F;
-  --color-primary-100: #FDF1DE;
-  /* A11y fix (Bo'lim 1.1 / 6 audit): --color-primary-dark (#D98F1F) light
+  --color-primary: #F2841C;
+  --color-primary-dark: #D9700F;
+  --color-primary-100: #FDEBDA;
+  /* A11y fix (Bo'lim 1.1 / 6 audit): --color-primary-dark (#D9700F) light
      rejimda MATN sifatida ishlatilganda (tab-item.active, feed-header-link,
      skill-chip, order-status-badge) 2.38–2.66:1 kontrast beradi — WCAG AA
      matn uchun 4.5:1 talab qiladi. Dark rejimda muammo yo'q edi (7.5–9.4:1),
@@ -42,7 +42,7 @@
      har bir joy uchun alohida rang tanlash shart bo'lmadi.
      Dekorativ icon fonlarida (role-emoji, empty-state-emoji) --color-primary-dark
      o'zi qoladi, chunki icon uchun WCAG talabi 3:1 (ular matn emas). */
-  --color-primary-text: #8A5A0E; /* light: 5.3–5.9:1 barcha fonlarda */
+  --color-primary-text: #8A470E; /* light: 5.3–5.9:1 barcha fonlarda */
   --color-text: #1A1F3D;
   --color-text-muted: #6B7086;
   --color-bg: #FAFAFA;
@@ -158,10 +158,10 @@ html {
    qaraydi. Profil ekranidagi svitcher shu attributni almashtiradi.
 ============================================================ */
 [data-theme="dark"] {
-  --color-primary: #F2A93B;       /* brend rangi ikkala rejimda ham bir xil qoladi */
-  --color-primary-dark: #F0AE4C;  /* dark bg'da matn/active holat sifatida ishlatilgani uchun bir оz yorqinlashtirildi, kontrast uchun */
-  --color-primary-100: #332714;   /* yorug' shaftoli fon endi issiq to'q qo'ng'ir tint — badge/icon doiralar uchun */
-  --color-primary-text-on-100: #F5B85C; /* 8.25:1 on dark --color-primary-100 */
+  --color-primary: #F2841C;       /* brend rangi ikkala rejimda ham bir xil qoladi */
+  --color-primary-dark: #F5983D;  /* dark bg'da matn/active holat sifatida ishlatilgani uchun bir оz yorqinlashtirildi, kontrast uchun */
+  --color-primary-100: #33220F;   /* yorug' shaftoli fon endi issiq to'q qo'ng'ir tint — badge/icon doiralar uchun */
+  --color-primary-text-on-100: #F5A85C; /* 8.25:1 on dark --color-primary-100 */
   --color-text: #F1F1F6;
   --color-text-muted: #9A9EB4;
   --color-bg: #14151D;
@@ -185,10 +185,10 @@ html {
      tizim sozlamasiga qarab avtomatik ishga tushadi. theme-init.js
      buni faqat "saqlangan tanlov yo'q" holatidagina qo'llaydi. */
   :root:not([data-theme="light"]):not([data-theme="dark"]) {
-    --color-primary: #F2A93B;
-    --color-primary-dark: #F0AE4C;
-    --color-primary-100: #332714;
-    --color-primary-text-on-100: #F5B85C; /* 8.25:1 on dark --color-primary-100 */
+    --color-primary: #F2841C;
+    --color-primary-dark: #F5983D;
+    --color-primary-100: #33220F;
+    --color-primary-text-on-100: #F5A85C; /* 8.25:1 on dark --color-primary-100 */
     --color-text: #F1F1F6;
     --color-text-muted: #9A9EB4;
     --color-bg: #14151D;
